@@ -441,6 +441,8 @@ internal fun EqualizerSheet(
     onSavePreset: (String) -> Unit = {},
     onRenamePreset: (String, String) -> Unit = { _, _ -> },
     onDeletePreset: (String) -> Unit = {},
+    onSetBass: (Boolean, Int) -> Unit = { _, _ -> },
+    onSetVirtualizer: (Boolean, Int) -> Unit = { _, _ -> },
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     /** Name dialog: null closed, "" saving a new preset, otherwise renaming that preset. */
@@ -641,6 +643,85 @@ internal fun EqualizerSheet(
                 gains = gains,
                 enabled = eq.enabled,
             )
+
+            // Musicolet-style sound FX: bass boost and 3D surround.
+            SectionLabel("Sound FX")
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var bassOn by remember(eq.bassEnabled) { mutableStateOf(eq.bassEnabled) }
+                    var bassPct by remember(eq.bassStrength) { mutableStateOf(eq.bassStrength.toFloat()) }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Bass Boost", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                            Text(
+                                if (bassOn) "Extra low-end punch, always clean" else "Off",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = bassOn,
+                            onCheckedChange = { on ->
+                                haptic.performHapticFeedback(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                                bassOn = on
+                                onSetBass(on, bassPct.roundToInt())
+                            },
+                        )
+                    }
+                    if (bassOn) {
+                        Slider(
+                            value = bassPct,
+                            onValueChange = { bassPct = it },
+                            onValueChangeFinished = { onSetBass(true, bassPct.roundToInt()) },
+                            valueRange = 0f..100f,
+                        )
+                        Text(
+                            "${bassPct.roundToInt()}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    var virtOn by remember(eq.virtualizerEnabled) { mutableStateOf(eq.virtualizerEnabled) }
+                    var virtPct by remember(eq.virtualizerStrength) { mutableStateOf(eq.virtualizerStrength.toFloat()) }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) {
+                            Text("3D Surround", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                            Text(
+                                if (virtOn) "Wider, roomier stereo image" else "Off",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = virtOn,
+                            onCheckedChange = { on ->
+                                haptic.performHapticFeedback(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                                virtOn = on
+                                onSetVirtualizer(on, virtPct.roundToInt())
+                            },
+                        )
+                    }
+                    if (virtOn) {
+                        Slider(
+                            value = virtPct,
+                            onValueChange = { virtPct = it },
+                            onValueChangeFinished = { onSetVirtualizer(true, virtPct.roundToInt()) },
+                            valueRange = 0f..100f,
+                        )
+                        Text(
+                            "${virtPct.roundToInt()}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
 
             // Presets Horizontal Flow
             SectionLabel("Presets")

@@ -1,7 +1,9 @@
 package com.lastwave.app.playback
 
+import android.media.audiofx.BassBoost
 import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
+import android.media.audiofx.Virtualizer
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -66,6 +68,8 @@ class AudioEffectsEngine @Inject constructor(
 
     private var attachedSessionId = C.AUDIO_SESSION_ID_UNSET
     private var toneEffect: ToneEffect? = null
+    private var bassEffect: BassBoost? = null
+    private var virtualizerEffect: Virtualizer? = null
 
     init {
         applicationScope.launch(Dispatchers.Default) {
@@ -168,7 +172,7 @@ class AudioEffectsEngine @Inject constructor(
             releaseAllInternal()
             attachedSessionId = targetSessionId
         }
-        if (bitPerfectActive || usbExclusiveActive || systemEffectsActive || !fallbackRequired || attachedSessionId == C.AUDIO_SESSION_ID_UNSET) {
+        if (bitPerfectActive || usbExclusiveActive || systemEffectsActive || attachedSessionId == C.AUDIO_SESSION_ID_UNSET) {
             releaseAllInternal()
             return
         }
@@ -181,12 +185,78 @@ class AudioEffectsEngine @Inject constructor(
             (if (loudnessMode != LoudnessMode.OFF) loudnessGainDb else 0f) +
                 (if (spatialContent) SPATIAL_MAKEUP_GAIN_DB else 0f)
             ).coerceIn(-LOUDNESS_GAIN_CLAMP_DB, LOUDNESS_GAIN_CLAMP_DB)
-        val needsTone = userEqEnabled || studioClarityEnabled || outputGainDb != 0f
+        // The platform tone stage is the last-resort fallback only; the native
+        // DSP path carries the EQ itself when it is active.
+        val needsTone = fallbackRequired && (userEqEnabled || studioClarityEnabled || outputGainDb != 0f)
         if (needsTone) {
             applyToneEffect(buildEqCurve(userEqEnabled), outputGainDb)
         } else {
             releaseToneInternal()
         }
+
+        // Musicolet-style bass boost and 3D surround ride on top of whichever
+        // output path is live (native DSP or the fallback tone stage), but
+        // never on bit-perfect, USB-exclusive or system-effects routes.
+        applyBassVirtualizerInternal()
+    }
+
+    private fun applyBassVirtualizerInternal() {
+        val sessionId = attachedSessionId
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET) {
+            releaseBassVirtualizerInternal()
+            return
+        }
+        if (!equalizerSettings.bassEnabled && !equalizerSettings.virtualizerEnabled) {
+            releaseBassVirtualizerInternal()
+            return
+        }
+        if (equalizerSettings.bassEnabled) {
+            var effect = bassEffect
+            if (effect == null) {
+                effect = runCatching { BassBoost(EFFECT_PRIORITY, sessionId) }
+                    .onFailure { Log.w(TAG, "BassBoost creation failed", it) }
+                    .getOrNull()
+                bassEffect = effect
+            }
+            effect?.let { boost ->
+                runCatching {
+                    boost.enabled = true
+                    boost.setStrength((equalizerSettings.bassStrength.coerceIn(0, 100) * 10).toShort())
+                }.onFailure { Log.w(TAG, "BassBoost apply failed", it) }
+            }
+        } else {
+            runCatching { bassEffect?.enabled = false }
+            bassEffect?.release()
+            bassEffect = null
+        }
+        if (equalizerSettings.virtualizerEnabled) {
+            var effect = virtualizerEffect
+            if (effect == null) {
+                effect = runCatching { Virtualizer(EFFECT_PRIORITY, sessionId) }
+                    .onFailure { Log.w(TAG, "Virtualizer creation failed", it) }
+                    .getOrNull()
+                virtualizerEffect = effect
+            }
+            effect?.let { virtualizer ->
+                runCatching {
+                    virtualizer.enabled = true
+                    virtualizer.setStrength((equalizerSettings.virtualizerStrength.coerceIn(0, 100) * 10).toShort())
+                }.onFailure { Log.w(TAG, "Virtualizer apply failed", it) }
+            }
+        } else {
+            runCatching { virtualizerEffect?.enabled = false }
+            virtualizerEffect?.release()
+            virtualizerEffect = null
+        }
+    }
+
+    private fun releaseBassVirtualizerInternal() {
+        runCatching { bassEffect?.enabled = false }
+        bassEffect?.release()
+        bassEffect = null
+        runCatching { virtualizerEffect?.enabled = false }
+        virtualizerEffect?.release()
+        virtualizerEffect = null
     }
 
     private fun refreshLoudnessGain() {
@@ -250,6 +320,7 @@ class AudioEffectsEngine @Inject constructor(
 
     private fun releaseAllInternal() {
         releaseToneInternal()
+        releaseBassVirtualizerInternal()
     }
 
     private fun releaseToneInternal() {

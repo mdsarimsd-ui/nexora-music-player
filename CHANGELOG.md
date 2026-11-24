@@ -1,3 +1,9 @@
+# Nexora Changelog
+
+## 1.0.0 — First release
+- Rebranded LastWave as Nexora (new name, logo and icon; the app experience is unchanged)
+- Musicolet-style equalizer additions: Bass Boost and 3D Surround sliders with the classic preset family (Normal, Dance, Folk, Heavy Metal, Hip Hop and more)
+
 # Changelog
 
 ## [5.2.1] - 2026-11-13

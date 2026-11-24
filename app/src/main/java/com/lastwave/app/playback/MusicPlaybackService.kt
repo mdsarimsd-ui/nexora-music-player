@@ -620,7 +620,7 @@ class MusicPlaybackService : MediaBrowserServiceCompat() {
             } else {
                 @Suppress("DEPRECATION") Notification.Builder(this)
             }.setSmallIcon(R.drawable.ic_launcher_logo)
-             .setContentTitle(musicPlayer.state.value.current?.title ?: "LastWave")
+             .setContentTitle(musicPlayer.state.value.current?.title ?: "Nexora")
              .setContentText(musicPlayer.state.value.current?.artist ?: "Music player")
              .setOnlyAlertOnce(true)
              .build()

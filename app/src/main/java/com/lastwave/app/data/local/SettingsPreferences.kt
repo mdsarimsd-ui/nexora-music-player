@@ -56,7 +56,7 @@ data class CacheClearHistory(
  *  proper nouns — no localization needed. */
 enum class LyricsProvider(val id: String, val title: String, val subtitle: String) {
     AUTO("auto", "Auto", "Fastest word-sync wins, LRCLIB fallback"),
-    LASTWAVE("lastwave", "LastWave", "Syllable & line-synced Apple lyrics first"),
+    LASTWAVE("lastwave", "Nexora", "Syllable & line-synced Apple lyrics first"),
     LRC_RED("lrc_red", "lrc.red", "ISRC-indexed syllable TTML & LRC first"),
     APPLE_MUSIC("apple_music", "Apple Music", "Syllable-synced Apple Music lyrics first"),
     BETTER_LYRICS("better_lyrics", "BetterLyrics", "Word-synced lyrics first"),

@@ -2701,7 +2701,7 @@ class MusicPlayer @Inject constructor(
 
     fun play(
         track: PlayableTrack,
-        sourceLabel: String = "LastWave",
+        sourceLabel: String = "Nexora",
         startRadio: Boolean = true,
         startPositionMs: Long = 0L,
         playWhenReady: Boolean = true,
@@ -2738,7 +2738,7 @@ class MusicPlayer @Inject constructor(
     fun playQueue(
         tracks: List<PlayableTrack>,
         startIndex: Int = 0,
-        sourceLabel: String = "LastWave",
+        sourceLabel: String = "Nexora",
         startShuffled: Boolean = false,
         enableRadioContinuation: Boolean = false,
     ) {
@@ -2795,7 +2795,7 @@ class MusicPlayer @Inject constructor(
         tracks: List<PlayableTrack>,
         startIndex: Int,
         endlessDiscover: Boolean,
-        sourceLabel: String = if (endlessDiscover) "Discover" else "LastWave",
+        sourceLabel: String = if (endlessDiscover) "Discover" else "Nexora",
         startShuffled: Boolean = false,
         enableRadioContinuation: Boolean = false,
     ) {

@@ -63,6 +63,12 @@ object EqualizerPresets {
         EqPreset("Deep Bass Clean", listOf(5.0f, 4.5f, 3.5f, 2.5f, 1.0f, 0f, -0.5f, -0.5f, 0f, 0f, 0f, 0f, 0.5f, 0.5f, 0.5f)),
         EqPreset("Electronic", listOf(4.5f, 4.0f, 3.0f, 2.0f, 0.5f, -0.5f, 0f, 1.0f, 2.0f, 2.5f, 2.5f, 2.5f, 3.0f, 3.5f, 4.0f)),
         EqPreset("R&B", listOf(5.0f, 4.5f, 3.5f, 2.0f, 1.0f, -0.5f, -1.0f, -0.5f, 0.5f, 1.5f, 2.0f, 2.5f, 3.0f, 3.0f, 3.0f)),
+        // The classic Musicolet/Android preset family, mapped onto the 15 bands.
+        EqPreset("Normal", listOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)),
+        EqPreset("Dance", listOf(6.0f, 5.5f, 4.5f, 3.0f, 1.5f, 0.5f, 0f, -0.5f, 0f, 1.0f, 2.0f, 3.5f, 4.5f, 5.5f, 6.0f)),
+        EqPreset("Folk", listOf(2.5f, 2.0f, 1.5f, 1.0f, 0.5f, 0f, 0.5f, 1.5f, 2.0f, 2.0f, 1.5f, 1.0f, 1.0f, 1.5f, 2.0f)),
+        EqPreset("Heavy Metal", listOf(5.0f, 4.5f, 3.5f, 2.5f, 1.5f, 0.5f, -0.5f, -1.0f, -0.5f, 0.5f, 2.0f, 3.5f, 4.5f, 5.0f, 5.0f)),
+        EqPreset("Hip Hop", listOf(7.0f, 6.5f, 5.5f, 4.0f, 2.5f, 1.0f, 0f, 0f, 0f, 0f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f)),
     )
 
     fun byName(name: String): EqPreset? = ALL.firstOrNull { it.name.equals(name, ignoreCase = true) }
@@ -75,6 +81,12 @@ data class EqualizerSettings(
     val gainsDb: List<Float> = EqualizerPresets.FLAT.gainsDb,
     /** The listener's own named presets (at most [MAX_USER_EQ_PRESETS]), shared by every output. */
     val userPresets: List<EqPreset> = emptyList(),
+    /** Musicolet-style bass boost, on/off with 0-100 strength. */
+    val bassEnabled: Boolean = false,
+    val bassStrength: Int = 0,
+    /** Musicolet-style 3D surround (virtualizer), on/off with 0-100 strength. */
+    val virtualizerEnabled: Boolean = false,
+    val virtualizerStrength: Int = 0,
 ) {
     fun isUserPreset(name: String): Boolean = userPresets.any { it.name.equals(name, ignoreCase = true) }
 }
@@ -116,6 +128,11 @@ class EqualizerPreferences @Inject constructor(
         val GAINS_DB = stringPreferencesKey("lw_eq_gains")
         /** "name\tg1,g2,...\n" per user preset, in the order they were created. */
         val USER_PRESETS = stringPreferencesKey("lw_eq_user_presets")
+        /** Musicolet-style extras: bass boost and 3D surround (virtualizer). */
+        val BASS_ENABLED = booleanPreferencesKey("lw_eq_bass_enabled")
+        val BASS_STRENGTH = intPreferencesKey("lw_eq_bass_strength")
+        val VIRTUALIZER_ENABLED = booleanPreferencesKey("lw_eq_virtualizer_enabled")
+        val VIRTUALIZER_STRENGTH = intPreferencesKey("lw_eq_virtualizer_strength")
     }
 
     val settings: Flow<EqualizerSettings> = dataStore.data
@@ -143,11 +160,31 @@ class EqualizerPreferences @Inject constructor(
                 presetName = resolvedName,
                 gainsDb = gains,
                 userPresets = userPresets,
+                bassEnabled = p.readSafely(Keys.BASS_ENABLED) ?: false,
+                bassStrength = (p.readSafely(Keys.BASS_STRENGTH) ?: 0).coerceIn(0, 100),
+                virtualizerEnabled = p.readSafely(Keys.VIRTUALIZER_ENABLED) ?: false,
+                virtualizerStrength = (p.readSafely(Keys.VIRTUALIZER_STRENGTH) ?: 0).coerceIn(0, 100),
             )
         }
 
     suspend fun setEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.ENABLED] = enabled }
+    }
+
+    /** Musicolet-style bass boost: on/off plus strength 0-100%. */
+    suspend fun setBassBoost(enabled: Boolean, strengthPercent: Int) {
+        dataStore.edit {
+            it[Keys.BASS_ENABLED] = enabled
+            it[Keys.BASS_STRENGTH] = strengthPercent.coerceIn(0, 100)
+        }
+    }
+
+    /** Musicolet-style 3D surround (virtualizer): on/off plus strength 0-100%. */
+    suspend fun setVirtualizer(enabled: Boolean, strengthPercent: Int) {
+        dataStore.edit {
+            it[Keys.VIRTUALIZER_ENABLED] = enabled
+            it[Keys.VIRTUALIZER_STRENGTH] = strengthPercent.coerceIn(0, 100)
+        }
     }
 
     suspend fun applyPreset(preset: EqPreset) {

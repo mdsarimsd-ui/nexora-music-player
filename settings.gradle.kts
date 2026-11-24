@@ -25,6 +25,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LastWave"
+rootProject.name = "Nexora"
 include(":app")
 include(":audio:decent-usb-audio-driver")

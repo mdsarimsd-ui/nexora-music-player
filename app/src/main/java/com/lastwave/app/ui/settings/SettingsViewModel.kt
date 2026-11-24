@@ -933,6 +933,16 @@ class SettingsViewModel @Inject constructor(
         launchSettingsAction("update the equalizer band") { equalizerPreferences.setBandGain(bandIndex, gainDb) }
     }
 
+    /** Musicolet-style bass boost: on/off plus strength 0-100%. */
+    fun setBassBoost(enabled: Boolean, strengthPercent: Int) {
+        launchSettingsAction("update bass boost") { equalizerPreferences.setBassBoost(enabled, strengthPercent) }
+    }
+
+    /** Musicolet-style 3D surround: on/off plus strength 0-100%. */
+    fun setVirtualizer(enabled: Boolean, strengthPercent: Int) {
+        launchSettingsAction("update 3D surround") { equalizerPreferences.setVirtualizer(enabled, strengthPercent) }
+    }
+
     // ── Data management (§8.5) ──
 
     fun clearRecommendationExclusions() {

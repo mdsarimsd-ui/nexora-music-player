@@ -809,7 +809,7 @@ class ExclusiveUsbOutput @Inject constructor(
 
     /** Text for the signal-path "copy USB diagnostic" button. */
     fun diagnosticReport(): String = buildString {
-        append("LastWave USB diagnostic\n")
+        append("Nexora USB diagnostic\n")
         append("active=$active wanted=$wanted rate=$configuredRateHz clockMatched=$clockMatched ")
         append("hardwareVolume=$hardwareVolume forceSoftwareVolume=$forceSoftwareVolume\n")
         if (sessionSummary.isNotEmpty()) append(sessionSummary).append('\n')

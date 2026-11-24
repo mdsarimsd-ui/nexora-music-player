@@ -2728,6 +2728,8 @@ fun SettingsScreen(
             onSavePreset = viewModel::saveEqPreset,
             onRenamePreset = viewModel::renameEqPreset,
             onDeletePreset = viewModel::deleteEqPreset,
+            onSetBass = { enabled, strength -> viewModel.setBassBoost(enabled, strength) },
+            onSetVirtualizer = { enabled, strength -> viewModel.setVirtualizer(enabled, strength) },
         )
     }
 

@@ -170,6 +170,8 @@ import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Tune
+import com.lastwave.app.ui.settings.EqualizerSheet
+import com.lastwave.app.ui.settings.SettingsViewModel
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
@@ -525,6 +527,9 @@ internal fun FullPlayer(
     }
     var showAudioControls by remember { mutableStateOf(false) }
     var showAutoEq by remember { mutableStateOf(false) }
+    var showEqSheet by remember { mutableStateOf(false) }
+    val eqViewModel: SettingsViewModel = hiltViewModel()
+    val eq by eqViewModel.equalizer.collectAsStateWithLifecycle()
     val signalPath by player.signalPath.collectAsStateWithLifecycle()
     val usbDac by player.usbDacState.collectAsStateWithLifecycle()
     var isArtworkDragging by remember(track.videoId, track.title) { mutableStateOf(false) }
@@ -1190,7 +1195,7 @@ internal fun FullPlayer(
                                     if (currentTab == FullPlayerTab.LYRICS) {
                                         "${track.title} • ${track.artist}"
                                     } else {
-                                        state.sourceLabel.takeIf { it.isNotBlank() } ?: "LastWave"
+                                        state.sourceLabel.takeIf { it.isNotBlank() } ?: "Nexora"
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (isThemeLight) Color(0xFF444448) else Color.White.copy(alpha = 0.70f),
@@ -1203,6 +1208,27 @@ internal fun FullPlayer(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                if (currentTab == FullPlayerTab.NOW_PLAYING) {
+                                    LiquidGlassSurface(
+                                        onClick = hapticClick { showEqSheet = true },
+                                        shape = CircleShape,
+                                        color = if (eq.enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                                        else liquidGlassContainerColor(if (isThemeLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.14f)),
+                                        contentColor = if (eq.enabled) MaterialTheme.colorScheme.primary else (if (isThemeLight) Color(0xFF222226) else Color.White.copy(alpha = 0.94f)),
+                                        glassModifier = Modifier.liquidGlassChrome(
+                                            CircleShape,
+                                            LocalLiquidGlass.current,
+                                            LiquidGlassPreset.FloatingControls,
+                                        ),
+                                        modifier = Modifier.size(44.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Tune,
+                                            contentDescription = stringResource(com.lastwave.app.R.string.player_eq_cd),
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                    }
+                                }
                                 if (currentTab == FullPlayerTab.LYRICS && onSetLyricsOffsetMs != null) {
                                     LiquidGlassSurface(
                                         onClick = hapticClick { showLyricsOffsetDialog = true },
@@ -2080,6 +2106,21 @@ internal fun FullPlayer(
             currentMs = lyricsOffsetMs,
             onSelect = onSetLyricsOffsetMs,
             onDismiss = { showLyricsOffsetDialog = false },
+        )
+    }
+    if (showEqSheet) {
+        EqualizerSheet(
+            eq = eq,
+            onDismiss = { showEqSheet = false },
+            onSetEnabled = eqViewModel::setEqualizerEnabled,
+            onPickPreset = eqViewModel::applyEqPreset,
+            onBandPreview = eqViewModel::previewEqBandGain,
+            onBandChange = eqViewModel::setEqBandGain,
+            onSavePreset = eqViewModel::saveEqPreset,
+            onRenamePreset = eqViewModel::renameEqPreset,
+            onDeletePreset = eqViewModel::deleteEqPreset,
+            onSetBass = { enabled, strength -> eqViewModel.setBassBoost(enabled, strength) },
+            onSetVirtualizer = { enabled, strength -> eqViewModel.setVirtualizer(enabled, strength) },
         )
     }
     AutoMixPopupHost(

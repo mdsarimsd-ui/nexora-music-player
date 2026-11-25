@@ -792,6 +792,12 @@ private fun ColumnScope.RedesignedTrackMenuContent(
                             dismissMenu()
                         }
                     }
+                    add {
+                        MenuActionRow(Icons.AutoMirrored.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), enabled = !dismissing) {
+                            musicPlayer.playNext(playable)
+                            dismissMenu()
+                        }
+                    }
 
                     // Row 2: Download | Copy song
                     val downloadKey = com.lastwave.app.data.download.TrackDownloadManager.makeDownloadKey(t.name, t.artist)
@@ -1111,6 +1117,12 @@ private fun ColumnScope.ClassicTrackMenuContent(
                 add { pos ->
                     ClassicMenuActionRow(Icons.AutoMirrored.Outlined.QueueMusic, stringResource(R.string.menu_add_queue), position = pos, enabled = !dismissing) {
                         musicPlayer.addToQueue(playable)
+                        dismissMenu()
+                    }
+                }
+                add { pos ->
+                    ClassicMenuActionRow(Icons.AutoMirrored.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), position = pos, enabled = !dismissing) {
+                        musicPlayer.playNext(playable)
                         dismissMenu()
                     }
                 }

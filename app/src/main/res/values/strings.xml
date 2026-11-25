@@ -657,6 +657,7 @@
     <string name="menu_timer_off">Off</string>
     <string name="menu_timer_minutes">%1$d minutes</string>
     <string name="menu_add_queue">Add to queue</string>
+    <string name="menu_play_next">Play after current song</string>
     <string name="menu_open_lastfm">Open in Last.fm</string>
     <string name="menu_copy_link">Copy link</string>
     <string name="link_copied">Link copied to clipboard</string>

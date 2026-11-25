@@ -587,7 +587,7 @@ class PlaylistViewModel @Inject constructor(
                 ids.forEach { id ->
                     tracks.forEach { track -> runCatching { playlistRepository.addTrack(id, track) } }
                 }
-                _toastMessage.emit("Added ${tracks.size} songs")
+                _uiState.update { it.copy(toastMessage = "Added ${tracks.size} songs") }
             }.onFailure { android.util.Log.e("PlaylistViewModel", "addTracksToPlaylists failed", it) }
             load()
         }

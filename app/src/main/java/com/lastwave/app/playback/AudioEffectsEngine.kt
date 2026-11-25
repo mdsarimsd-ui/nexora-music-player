@@ -124,19 +124,8 @@ class AudioEffectsEngine @Inject constructor(
                         type = 0, // peaking
                         frequencyHz = hz.toFloat(),
                         gainDb = gain,
-                        q = 1.2f,
+                        q = 1.4f,
                         enabled = gain != 0f,
-                    )
-                )
-            }
-            if (settings.bassEnabled && settings.bassStrength > 0) {
-                add(
-                    com.lastwave.app.playback.eq.ParametricEqNative.NativeFilter(
-                        type = 1, // low shelf
-                        frequencyHz = 90f,
-                        gainDb = settings.bassStrength / 100f * 12f,
-                        q = 0.7f,
-                        enabled = true,
                     )
                 )
             }
@@ -146,7 +135,7 @@ class AudioEffectsEngine @Inject constructor(
             return
         }
         val maxBoost = filters.maxOf { it.gainDb }
-        val preamp = -(maxBoost * 0.85f).coerceIn(0f, 14f)
+        val preamp = -(maxBoost * 0.6f).coerceIn(0f, 10f)
         eqNative.publish(chainOn, preamp, filters)
     }
 

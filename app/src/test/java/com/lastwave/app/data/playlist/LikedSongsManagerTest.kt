@@ -91,6 +91,7 @@ class LikedSongsManagerTest {
         fun manager(scope: kotlinx.coroutines.CoroutineScope) = LikedSongsManager(
             mockk<Context>(), repository, scope, mockk<SettingsPreferences>(),
             mockk<YtLikedSongsSync>(relaxed = true).also { sync -> every { sync.mutationMutex } returns Mutex() },
+            mockk<com.lastwave.app.data.localmusic.LocalOfflineRepository>(relaxed = true),
         )
     }
 }

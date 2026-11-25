@@ -275,7 +275,10 @@ class YtLikedSongsSyncTest {
         }
 
         fun manager(scope: CoroutineScope, sync: YtLikedSongsSync) =
-            LikedSongsManager(mockk<Context>(), repository, scope, mockk<SettingsPreferences>(), sync)
+            LikedSongsManager(
+                mockk<Context>(), repository, scope, mockk<SettingsPreferences>(), sync,
+                mockk<com.lastwave.app.data.localmusic.LocalOfflineRepository>(relaxed = true),
+            )
         fun sync(scope: CoroutineScope) = YtLikedSongsSync(dataStore, repository, api, auth, scope)
         fun journal(): LikeSyncJournal = dataStore.data.value[stringPreferencesKey("yt_liked_songs_journal_v1")]
             ?.let { Json.decodeFromString<LikeSyncJournal>(it) } ?: LikeSyncJournal()

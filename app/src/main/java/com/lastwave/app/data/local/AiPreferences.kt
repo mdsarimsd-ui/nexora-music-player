@@ -20,7 +20,7 @@ data class AiSettings(
     /** Only "gemini" is wired for now; kept as a string for future providers. */
     val provider: String = "gemini",
     val apiKey: String = "",
-    val model: String = "gemini-2.0-flash",
+    val model: String = "gemini-3.8-flash",
 ) {
     val isUsable: Boolean get() = enabled && apiKey.isNotBlank()
 }
@@ -41,7 +41,7 @@ class AiPreferences @Inject constructor(
             enabled = prefs[Keys.ENABLED] ?: false,
             provider = prefs[Keys.PROVIDER] ?: "gemini",
             apiKey = prefs[Keys.API_KEY] ?: "",
-            model = prefs[Keys.MODEL] ?: "gemini-2.0-flash",
+            model = prefs[Keys.MODEL]?.takeIf { it != "gemini-2.0-flash" } ?: "gemini-3.8-flash",
         )
     }
 
@@ -58,6 +58,6 @@ class AiPreferences @Inject constructor(
     }
 
     suspend fun setModel(model: String) {
-        dataStore.edit { it[Keys.MODEL] = model.trim().ifBlank { "gemini-2.0-flash" } }
+        dataStore.edit { it[Keys.MODEL] = model.trim().ifBlank { "gemini-3.8-flash" } }
     }
 }

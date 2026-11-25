@@ -146,7 +146,7 @@ class AudioEffectsEngine @Inject constructor(
             return
         }
         val maxBoost = filters.maxOf { it.gainDb }
-        val preamp = -(maxBoost * 0.4f).coerceIn(0f, 8f)
+        val preamp = -(maxBoost * 0.85f).coerceIn(0f, 14f)
         eqNative.publish(chainOn, preamp, filters)
     }
 

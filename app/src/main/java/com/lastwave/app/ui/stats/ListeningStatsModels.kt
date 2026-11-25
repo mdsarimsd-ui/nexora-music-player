@@ -144,6 +144,8 @@ data class ListeningStagesData(
 
 @Immutable
 data class ListeningStatsUiState(
+    val songsRows: List<SongsListRow> = emptyList(),
+    val songsSort: SongsSort = SongsSort.RECENT,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val selectedRange: StatsTimeRange = StatsTimeRange.ALL_TIME,
@@ -166,3 +168,23 @@ data class ListeningStatsUiState(
     val consistency: ConsistencyScoreData? = null,
     val stages: ListeningStagesData? = null,
 )
+
+/** One playable row on the Songs page: device imports, app downloads and generated songs. */
+data class SongsListRow(
+    val key: String,
+    val title: String,
+    val artist: String,
+    val artworkUrl: String?,
+    val playCount: Int,
+    val durationMs: Long,
+    val recentAt: Long,
+    val track: com.lastwave.app.playback.PlayableTrack,
+)
+
+enum class SongsSort(val label: String) {
+    RECENT("Recently played"),
+    MOST_PLAYED("Most played"),
+    TITLE("Title A-Z"),
+    ARTIST("Artist A-Z"),
+    MANUAL("Manual order"),
+}

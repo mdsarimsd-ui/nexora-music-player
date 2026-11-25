@@ -16,11 +16,11 @@ enum class SpatializationMode(val label: String) {
 /**
  * YouTube-style rotating-pan spatializer for the 8D / 16D toggle.
  *
- * The mix is summed to a mono source, panned hard around the head in a full
- * circle (8D) or swung ear to ear (16D), and fed through a Schroeder reverb
- * so it carries the room tail those mixes have. 8D does one full circle every
- * 10 s; 16D swings between hard left and hard right about every second, the
- * "looming" jump the YouTube mixes are known for.
+ * A panned core (mono sum) rotates around the head in a full circle (8D) or
+ * swings ear to ear (16D) over a Schroeder reverb tail, while the original
+ * stereo bed stays in underneath so the mix keeps its width. An ear floor
+ * keeps each ear from ever dropping fully silent, and the reverb send is
+ * lighter than before so vocals stay clear.
  *
  * Runs on the native DSP output path right after the virtualizer. Only
  * stereo Float32 buffers are touched; anything else passes through
@@ -43,11 +43,11 @@ class SpatializationStage {
 
     /** One full circle every 10 s for 8D; no circle for 16D. */
     private val rotationHz: Double
-        get() = if (mode == SpatializationMode.D8) 1.0 / 10.0 else 0.0
+        get() = if (mode == SpatializationMode.D8) 1.0 / 8.0 else 0.0
 
     /** 16D swings between the ears at 0.45 Hz (about every 1.1 s). */
     private val alternationHz: Double
-        get() = if (mode == SpatializationMode.D16) 0.45 else 0.0
+        get() = if (mode == SpatializationMode.D16) 0.7 else 0.0
 
     private fun ensureReverb(sampleRateHz: Int) {
         if (sampleRateHz == reverbRateHz && combBuf.isNotEmpty()) return
@@ -110,28 +110,33 @@ class SpatializationStage {
                 val r = output.getFloat(pos + Float.SIZE_BYTES)
                 val mono = (l + r) * 0.5f
                 val wet = reverb(mono)
-                val gL: Double
-                val gR: Double
+                val gL: Float
+                val gR: Float
                 if (rotationPerFrame > 0.0) {
-                    // Full circle around the head: hard left, hard right, then
-                    // the phase-inverted pass behind the listener.
-                    gL = cos(theta)
-                    gR = sin(theta)
+                    // Full circle around the head. The original stereo bed
+                    // stays in underneath so the mix never collapses to mono.
+                    gL = cos(theta).toFloat()
+                    gR = sin(theta).toFloat()
                     theta += rotationPerFrame
                     if (theta > TAU) theta %= TAU
                 } else {
-                    // Ear to ear: a smooth hard-left to hard-right swing and
-                    // back, equal power, so each ear goes fully silent in turn.
+                    // Ear to ear: a smooth left-right swing and back, equal
+                    // power, with an ear floor so no ear ever drops fully
+                    // silent (that dropout was what made 16D feel stuck).
                     val tri = 0.5 - 0.5 * cos(alt)
-                    gL = cos(0.5 * PI * tri)
-                    gR = sin(0.5 * PI * tri)
+                    gL = cos(0.5 * PI * tri).toFloat()
+                    gR = sin(0.5 * PI * tri).toFloat()
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
-                val gLf = gL.toFloat()
-                val gRf = gR.toFloat()
-                val outL = mono * gLf * 0.80f + wet * gLf * 0.50f
-                val outR = mono * gRf * 0.80f + wet * gRf * 0.50f
+                val earFloor = 0.18f
+                val panL = earFloor + (1f - earFloor) * gL.coerceAtLeast(0f)
+                val panR = earFloor + (1f - earFloor) * gR.coerceAtLeast(0f)
+                val dry = 0.60f
+                val panDepth = 0.50f
+                val wetMix = 0.28f
+                val outL = (l * dry + mono * panL * panDepth + wet * panL * wetMix).coerceIn(-1.0f, 1.0f)
+                val outR = (r * dry + mono * panR * panDepth + wet * panR * wetMix).coerceIn(-1.0f, 1.0f)
                 output.putFloat(pos, outL)
                 output.putFloat(pos + Float.SIZE_BYTES, outR)
                 pos += 2 * Float.SIZE_BYTES

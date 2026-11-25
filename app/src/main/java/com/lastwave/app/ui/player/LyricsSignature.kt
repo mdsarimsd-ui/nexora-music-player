@@ -322,21 +322,19 @@ private fun SignatureWordmark(
         letterSpacing = (-1).sp,
         textAlign = TextAlign.Center,
     )
-    val sweep = if (shine) {
-        rememberInfiniteTransition(label = "lwSignature").animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                keyframes {
-                    durationMillis = 3_600
-                    0f at 0
-                    1f at 1_300 using FastOutSlowInEasing
-                    1f at 3_600
-                },
-            ),
-            label = "lwSignatureSweep",
-        )
-    } else null
+    // One sweep when the wordmark appears, then the layer settles: a
+    // continuous clock here redrew the player every frame and made it lag.
+    val sweep = remember(shine) {
+        if (shine) androidx.compose.animation.core.Animatable(0f) else null
+    }
+    if (sweep != null) {
+        LaunchedEffect(Unit) {
+            sweep.animateTo(
+                1f,
+                androidx.compose.animation.core.tween(1_300, easing = FastOutSlowInEasing),
+            )
+        }
+    }
     val text = "Nexora"
     Box(modifier, contentAlignment = Alignment.Center) {
         // Glow: the same glyphs with a soft shadow under the wordmark. No

@@ -19,13 +19,25 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
+import com.lastwave.app.ui.common.ArtworkImage
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
@@ -41,6 +53,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,7 +99,7 @@ fun ListeningStatsScreen(
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Listening Stats",
+                        text = "Songs",
                         style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -133,6 +149,30 @@ fun ListeningStatsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // ── ALL SONGS: play, shuffle, loop, sort, rearrange ──
+            item {
+                SongsHeaderCard(
+                    count = uiState.songsRows.size,
+                    sort = uiState.songsSort,
+                    onSort = viewModel::setSongsSort,
+                    onShuffleAll = viewModel::shuffleSongs,
+                )
+            }
+            item { SongsControlsRow(viewModel) }
+            val rows = uiState.songsRows
+            val manual = uiState.songsSort == SongsSort.MANUAL
+            itemsIndexed(rows, key = { _, row -> row.key }) { idx, row ->
+                SongsListRowItem(
+                    row = row,
+                    index = idx,
+                    total = rows.size,
+                    manualMode = manual,
+                    onMoveUp = { viewModel.moveSong(idx, idx - 1) },
+                    onMoveDown = { viewModel.moveSong(idx, idx + 1) },
+                    onClick = { viewModel.playSongsAt(idx) },
+                )
+            }
+
             // ── TIME RANGE CHIPS ──
             item {
                 LazyRow(
@@ -668,5 +708,176 @@ private fun ConcentrationRow(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+private fun formatSongDuration(ms: Long): String {
+    if (ms <= 0L) return ""
+    val totalSec = ms / 1000L
+    return "%d:%02d".format(totalSec / 60L, totalSec % 60L)
+}
+
+@Composable
+private fun SongsHeaderCard(
+    count: Int,
+    sort: SongsSort,
+    onSort: (SongsSort) -> Unit,
+    onShuffleAll: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "All songs",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "$count songs \u00b7 every download and import",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onShuffleAll) {
+                Icon(
+                    imageVector = Icons.Filled.Shuffle,
+                    contentDescription = "Shuffle all",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Box {
+                TextButton(onClick = { menuOpen = true }) {
+                    Text(sort.label, style = MaterialTheme.typography.labelLarge)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    SongsSort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            onClick = {
+                                onSort(option)
+                                menuOpen = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongsListRowItem(
+    row: SongsListRow,
+    index: Int,
+    total: Int,
+    manualMode: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (manualMode) {
+                Column {
+                    IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(30.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowUp,
+                            contentDescription = "Move up",
+                            tint = if (index > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    IconButton(onClick = onMoveDown, enabled = index < total - 1, modifier = Modifier.size(30.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Move down",
+                            tint = if (index < total - 1) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+            ArtworkImage(
+                name = row.title,
+                artist = row.artist,
+                embeddedUrl = row.artworkUrl,
+                fallbackIcon = Icons.Filled.MusicNote,
+                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(10.dp)),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = row.title.ifBlank { "Unknown Title" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = buildString {
+                        append(row.artist.ifBlank { "Unknown Artist" })
+                        if (row.playCount > 0) append(" \u00b7 ${row.playCount} plays")
+                        val d = formatSongDuration(row.durationMs)
+                        if (d.isNotBlank()) append(" \u00b7 $d")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongsControlsRow(viewModel: ListeningStatsViewModel) {
+    var shuffleOn by remember { mutableStateOf(false) }
+    var loopMode by remember { mutableIntStateOf(0) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = {
+            shuffleOn = !shuffleOn
+            viewModel.toggleSongsShuffle()
+        }) {
+            Icon(
+                imageVector = Icons.Filled.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (shuffleOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = {
+            loopMode = (loopMode + 1) % 3
+            viewModel.setSongsRepeat(loopMode)
+        }) {
+            Icon(
+                imageVector = if (loopMode == 2) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Loop",
+                tint = if (loopMode == 0) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }

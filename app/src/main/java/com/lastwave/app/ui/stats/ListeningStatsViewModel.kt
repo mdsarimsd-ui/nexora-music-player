@@ -3,7 +3,15 @@ package com.lastwave.app.ui.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lastwave.app.data.generate.TasteProfileProvider
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.lastwave.app.data.local.SessionPreferences
+import com.lastwave.app.playback.MediaType
+import com.lastwave.app.playback.MusicPlayer
+import com.lastwave.app.playback.toPlayableTrack
+import kotlinx.coroutines.flow.first
 import com.lastwave.app.data.local.db.DownloadedTrackDao
 import com.lastwave.app.data.local.db.SongPlayStatsDao
 import com.lastwave.app.data.local.db.SongPlayStatsEntity
@@ -33,6 +41,8 @@ class ListeningStatsViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val sessionPreferences: SessionPreferences,
     private val tasteProfileProvider: TasteProfileProvider,
+    private val musicPlayer: MusicPlayer,
+    private val dataStore: DataStore<Preferences>,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListeningStatsUiState())
@@ -75,6 +85,11 @@ class ListeningStatsViewModel @Inject constructor(
                 localStatsCache = runCatching { localStatsRepository.load() }.getOrNull()
                 tasteTags = runCatching { tasteProfileProvider.get().topTags.toList() }.getOrNull().orEmpty()
                 downloadedFallbackList = runCatching { downloadedTrackDao.getAllList() }.getOrNull().orEmpty()
+                manualOrder = runCatching {
+                    dataStore.data.first()[ORDER_KEY]?.split(ORDER_SEP)?.filter { it.isNotBlank() } ?: emptyList()
+                }.getOrDefault(emptyList())
+                buildSongsRows()
+                applySongsSort()
             }
             recalculate()
             _uiState.update { it.copy(isLoading = false, isRefreshing = false) }
@@ -876,3 +891,131 @@ class ListeningStatsViewModel @Inject constructor(
         return if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
     }
 }
+
+    // ---- Songs page: every device import, app download and generated song ----
+
+    private val ORDER_KEY = stringPreferencesKey("lw_stats_songs_order")
+    private val ORDER_SEP = "\u0001"
+    private var songsMaster: List<SongsListRow> = emptyList()
+    private var manualOrder: List<String> = emptyList()
+
+    private fun buildSongsRows() {
+        val statsByKey = rawStatsList.associateBy { it.trackKey }
+        val rows = LinkedHashMap<String, SongsListRow>()
+
+        fun playCountFor(title: String, artist: String): Int =
+            statsByKey["${title}|${artist}".lowercase()]?.playCount?.coerceAtLeast(0) ?: 0
+
+        fun lastPlayedFor(title: String, artist: String): Long =
+            statsByKey["${title}|${artist}".lowercase()]?.lastPlayedAtMillis ?: 0L
+
+        // App downloads first so a downloaded copy wins over a playlist duplicate.
+        downloadedFallbackList.forEach { dt ->
+            val key = "${dt.title}|${dt.artist}".lowercase()
+            if (key in rows) return@forEach
+            rows[key] = SongsListRow(
+                key = key,
+                title = dt.title,
+                artist = dt.artist,
+                artworkUrl = dt.artworkUrl,
+                playCount = playCountFor(dt.title, dt.artist),
+                durationMs = dt.durationMs,
+                recentAt = maxOf(lastPlayedFor(dt.title, dt.artist), dt.downloadedAtMillis),
+                track = com.lastwave.app.playback.PlayableTrack(
+                    title = dt.title,
+                    artist = dt.artist,
+                    album = dt.album.takeIf { it.isNotBlank() },
+                    artworkUrl = dt.artworkUrl,
+                    playbackUrl = dt.filePath,
+                    durationMs = dt.durationMs.takeIf { it > 0L },
+                    mediaType = MediaType.SONG,
+                ),
+            )
+        }
+
+        // Device imports and generated songs stored in the local playlists.
+        val playlists = runCatching { playlistRepository.getAll() }.getOrDefault(emptyList())
+        playlists.asSequence().flatMap { it.tracks }.forEach { gt ->
+            if (gt.url.isBlank()) return@forEach
+            val key = "${gt.name}|${gt.artist}".lowercase()
+            if (key in rows) return@forEach
+            rows[key] = SongsListRow(
+                key = key,
+                title = gt.name,
+                artist = gt.artist,
+                artworkUrl = gt.artworkUrl,
+                playCount = playCountFor(gt.name, gt.artist),
+                durationMs = gt.durationMs ?: 0L,
+                recentAt = lastPlayedFor(gt.name, gt.artist),
+                track = gt.toPlayableTrack(),
+            )
+        }
+
+        songsMaster = rows.values.toList()
+    }
+
+    private fun applySongsSort() {
+        val sort = _uiState.value.songsSort
+        val sorted = when (sort) {
+            SongsSort.RECENT -> songsMaster.sortedWith(
+                compareByDescending<SongsListRow> { it.recentAt }.thenBy { it.title.lowercase() },
+            )
+            SongsSort.MOST_PLAYED -> songsMaster.sortedWith(
+                compareByDescending<SongsListRow> { it.playCount }.thenBy { it.title.lowercase() },
+            )
+            SongsSort.TITLE -> songsMaster.sortedBy { it.title.lowercase() }
+            SongsSort.ARTIST -> songsMaster.sortedBy { "${it.artist}|${it.title}".lowercase() }
+            SongsSort.MANUAL -> {
+                val order = manualOrder
+                songsMaster.sortedBy { row -> order.indexOf(row.key).let { if (it < 0) Int.MAX_VALUE else it } }
+            }
+        }
+        _uiState.update { it.copy(songsRows = sorted) }
+    }
+
+    fun setSongsSort(sort: SongsSort) {
+        _uiState.update { it.copy(songsSort = sort) }
+        applySongsSort()
+    }
+
+    /** Rearranges the list in manual order and remembers it across sessions. */
+    fun moveSong(from: Int, to: Int) {
+        val rows = _uiState.value.songsRows.toMutableList()
+        if (from !in rows.indices || to !in rows.indices || from == to) return
+        val moved = rows.removeAt(from)
+        rows.add(to.coerceIn(0, rows.size), moved)
+        _uiState.update { it.copy(songsRows = rows.toList(), songsSort = SongsSort.MANUAL) }
+        viewModelScope.launch(Dispatchers.IO) {
+            manualOrder = rows.map { it.key }
+            runCatching { dataStore.edit { it[ORDER_KEY] = manualOrder.joinToString(ORDER_SEP) } }
+        }
+    }
+
+    fun playSongsAt(index: Int) {
+        val rows = _uiState.value.songsRows
+        if (rows.isEmpty()) return
+        musicPlayer.playQueue(
+            tracks = rows.map { it.track },
+            startIndex = index.coerceIn(0, rows.lastIndex),
+            sourceLabel = "Songs",
+            startShuffled = false,
+            enableRadioContinuation = false,
+        )
+    }
+
+    fun shuffleSongs() {
+        val rows = _uiState.value.songsRows
+        if (rows.isEmpty()) return
+        musicPlayer.playQueue(
+            tracks = rows.map { it.track },
+            startIndex = 0,
+            sourceLabel = "Songs",
+            startShuffled = true,
+            enableRadioContinuation = false,
+        )
+    }
+
+    fun toggleSongsShuffle() = musicPlayer.toggleShuffle()
+
+    /** mode: 0 = off, 1 = repeat all, 2 = repeat one. */
+    fun setSongsRepeat(mode: Int) = musicPlayer.setRepeatMode(mode)

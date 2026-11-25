@@ -947,6 +947,33 @@ class NativeProcessingAudioSink(
         autoMixTaps.kicks.process(output, outputChannelCount, processor.nativeOutputSampleRate, mediaUs)
         autoMixTaps.eq.process(output, outputChannelCount, processor.nativeOutputSampleRate, mediaUs)
         autoMixTaps.level.process(output, outputChannelCount, processor.nativeOutputSampleRate)
+        softLimit(output)
+    }
+
+    /**
+     * Final soft-knee limiter at the very end of the DSP chain. Boost stages
+     * no longer clamp internally, so peaks that exceed full scale are bent
+     * here instead of being hard-clipped by the DAC, which was the harsh
+     * crackle on every kick when bass or EQ boosts were on.
+     */
+    private fun softLimit(output: ByteBuffer) {
+        val originalOrder = output.order()
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        try {
+            var p = output.position()
+            val limit = output.limit()
+            while (p + Float.SIZE_BYTES <= limit) {
+                val x = output.getFloat(p)
+                if (x > 0.95f || x < -0.95f) {
+                    val a = kotlin.math.abs(x)
+                    val bent = 0.95f + (a - 0.95f) / (1f + (a - 0.95f) * 12f)
+                    output.putFloat(p, kotlin.math.sign(x) * bent)
+                }
+                p += Float.SIZE_BYTES
+            }
+        } finally {
+            output.order(originalOrder)
+        }
     }
 
     override fun playToEndOfStream() {

@@ -60,8 +60,8 @@ class VirtualizerStage(
                 pos = (pos + 1) % haas
                 val mid = (l + r) * 0.5f
                 val side = (l - r) * 0.5f
-                val outL = ((mid + side * widen + dr * feed) * 0.85f).coerceIn(-1.0f, 1.0f)
-                val outR = ((mid - side * widen + dl * feed) * 0.85f).coerceIn(-1.0f, 1.0f)
+                val outL = (mid + side * widen + dr * feed) * 0.85f
+                val outR = (mid - side * widen + dl * feed) * 0.85f
                 output.putFloat(p, outL)
                 output.putFloat(p + Float.SIZE_BYTES, outR)
                 p += 2 * Float.SIZE_BYTES

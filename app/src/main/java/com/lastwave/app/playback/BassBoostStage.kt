@@ -131,8 +131,8 @@ class BassBoostStage(
 
                     val outL = (shelfL * extra + harm * 0.8f) * 0.92f
                     val outR = (shelfR * extra + harm * 0.8f) * 0.92f
-                    output.putFloat(p, softClip(outL))
-                    output.putFloat(p + Float.SIZE_BYTES, softClip(outR))
+                    output.putFloat(p, outL)
+                    output.putFloat(p + Float.SIZE_BYTES, outR)
                     p += 2 * Float.SIZE_BYTES
                 }
             } else {
@@ -148,7 +148,7 @@ class BassBoostStage(
                     val extra = 1f + punch * punchStrength * 0.15f
                     val harm = shelf * kotlin.math.abs(shelf) * harmonicAmount
                     val out = (shelf * extra + harm) * 0.92f
-                    output.putFloat(p, softClip(out))
+                    output.putFloat(p, out)
                     p += Float.SIZE_BYTES
                 }
             }
@@ -160,14 +160,5 @@ class BassBoostStage(
     private companion object {
         const val BASS_SHELF_HZ = 100f
 
-        /** Soft-knee limiter: below 0.95 the sample passes untouched, above
-         *  it bends instead of hard-clipping, so a hot bass line no longer
-         *  crackles on every kick. */
-        fun softClip(x: Float): Float {
-            val a = kotlin.math.abs(x)
-            if (a <= 0.95f) return x
-            val bent = 0.95f + (a - 0.95f) / (1f + (a - 0.95f) * 12f)
-            return kotlin.math.sign(x) * bent.coerceAtMost(1f)
-        }
     }
 }

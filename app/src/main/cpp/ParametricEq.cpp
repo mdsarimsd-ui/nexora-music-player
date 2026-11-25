@@ -265,8 +265,11 @@ bool ParametricEq::processPcm(std::uint8_t* data, std::size_t byteCount, std::in
                 case kPcmFloat: {
                     float raw;
                     std::memcpy(&raw, p, sizeof(raw));
+                    // Float output passes through unclamped: downstream stages
+                    // and the final limiter own headroom, so boosted bands no
+                    // longer hard-clip inside the EQ.
                     float out = tick(raw, ch);
-                    out = std::isfinite(out) ? std::clamp(out, -1.0F, 1.0F) : 0.0F;
+                    out = std::isfinite(out) ? out : 0.0F;
                     std::memcpy(p, &out, sizeof(out));
                     break;
                 }
@@ -292,7 +295,11 @@ ParametricEq::Coefficients ParametricEq::design(const Spec& spec, double sampleR
     const double omega = 2.0 * kPi * frequency / sampleRate;
     const double cosine = std::cos(omega);
     const double sine = std::sin(omega);
-    const double q = std::max(spec.q, 0.05);
+    // Proportional-Q (Rane "Perfect-Q" style): Q grows with the amount of
+    // boost or cut. A +-1 dB nudge keeps a wide, gentle bell that no longer
+    // rings, while a full +-12 dB swing reaches the band's configured Q.
+    const double qScale = 0.4 + 0.6 * std::min(std::abs(spec.gainDb) / 12.0, 1.0);
+    const double q = std::max(spec.q * qScale, 0.05);
     const double alpha = sine / (2.0 * q);
     const double amplitude = std::pow(10.0, spec.gainDb / 40.0);
     double b0 = 1.0, b1 = 0.0, b2 = 0.0, a0 = 1.0, a1 = 0.0, a2 = 0.0;

@@ -114,8 +114,7 @@ class LoudnessStage(
             val gain = from + step * frame
             val index = base + frame * channelCount
             for (channel in 0 until channelCount) {
-                val scaled = samples.get(index + channel) * gain
-                samples.put(index + channel, if (gain > 1f) scaled.coerceIn(-1f, 1f) else scaled)
+                samples.put(index + channel, samples.get(index + channel) * gain)
             }
         }
     }

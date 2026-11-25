@@ -38,6 +38,7 @@ import com.lastwave.app.playback.toPlayableTrack
 import com.lastwave.app.ui.playlist.PlaylistViewModel
 import com.lastwave.app.ui.shell.FloatingNavDefaults
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 /**
  * The bottom-nav Queue tab: the live current playlist with the same drag
  * reorder and swipe-to-remove as the in-player queue panel, plus a header

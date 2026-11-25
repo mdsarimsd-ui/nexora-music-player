@@ -613,10 +613,11 @@ class PlayerViewModel @Inject constructor(
             val local = playlistRepository.getAll()
                 .filter { it.mode == "custom" || it.mode == LIKED_SONGS_MODE }
                 .sortedByDescending { it.mode == LIKED_SONGS_MODE }
+            // Same rule as the playlists tab: only a linked mirror counts as
+            // a duplicate, never a bare title match.
             val remote = ytMusicLibraryManager.playlists.value.filterNot { r ->
                 local.any { l ->
-                    (l.remotePlaylistId != null && l.remotePlaylistId == r.remotePlaylistId) ||
-                    l.title.equals(r.title, ignoreCase = true)
+                    l.remotePlaylistId != null && l.remotePlaylistId == r.remotePlaylistId
                 }
             }
             _customPlaylists.value = (local + remote).distinctBy { it.id }

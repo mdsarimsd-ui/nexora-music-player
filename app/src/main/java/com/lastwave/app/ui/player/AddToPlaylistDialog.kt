@@ -361,7 +361,12 @@ internal fun AddToPlaylistDialogHost(
         AddToOfflinePlaylistDialog(
             track = track,
             playlists = offlinePlaylists,
-            roomPlaylists = roomPlaylists.filter { it.mode == "custom" && it.id >= 0L },
+            // Every Room playlist can hold a local song; the old
+            // mode=="custom" filter hid imported and other-mode playlists
+            // from this sheet while they stayed visible in the main tab.
+            roomPlaylists = roomPlaylists.filter {
+                it.id >= 0L && it.mode != "youtube_remote" && it.mode != com.lastwave.app.data.playlist.LOCAL_SONGS_MODE
+            },
             onDismiss = onDismiss,
             onAdd = { selectedIds ->
                 viewModel.addToOfflinePlaylists(selectedIds, track)
@@ -625,7 +630,7 @@ internal fun AddToPlaylistDialog(
                         onClick = {
                             val cleanName = newPlaylistName.trim()
                             val existingPlaylist = sanitizedPlaylists.firstOrNull {
-                                it.mode == "custom" && it.title.equals(cleanName, ignoreCase = true)
+                                it.id >= 0L && it.title.equals(cleanName, ignoreCase = true)
                             }
                             if (existingPlaylist == null) {
                                 onCreate(cleanName)

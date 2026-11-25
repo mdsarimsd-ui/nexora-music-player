@@ -364,10 +364,15 @@ internal fun MusicPlayer.resolveAndPlayQueueItem(index: Int) {
         }
         val isLocal = mediaItem.mediaId.startsWith("local:") || track.isLocalTrack()
         val hasNonPlaceholderUri = mediaItem.localConfiguration?.uri?.scheme?.let { it != "lastwave" } == true
+        // A baked-in stream URL with no preparedStreams entry behind it is a
+        // stale leftover (restored after process death, or its entry was
+        // evicted): taking it over fails to start. Only a still-fresh
+        // prepared stream counts as already resolved; anything else goes
+        // through a fresh resolve, which re-resolves and swaps the URI in.
         val isAlreadyResolved = if (isLocal) {
             hasNonPlaceholderUri
         } else {
-            hasNonPlaceholderUri && !profileMismatch && (prepared == null || !prepared.isExpired())
+            hasNonPlaceholderUri && !profileMismatch && prepared != null && !prepared.isExpired()
         }
         if (preparedMatches && isAlreadyResolved) {
             // Already resolved: publish quality synchronously so the badge is

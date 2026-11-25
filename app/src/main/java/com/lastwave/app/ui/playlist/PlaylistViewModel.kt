@@ -402,10 +402,13 @@ class PlaylistViewModel @Inject constructor(
         remote: List<SavedPlaylist>,
         mode: PlaylistSortMode,
     ): List<SavedPlaylist> {
+        // Dedupe only when the local row is a linked mirror of the same
+        // remote playlist. A bare title match used to swallow genuinely
+        // different playlists (a YouTube playlist named like a local one
+        // vanished from this list entirely).
         val dedupedRemote = remote.filterNot { r ->
             local.any { l ->
-                (l.remotePlaylistId != null && l.remotePlaylistId == r.remotePlaylistId) ||
-                l.title.equals(r.title, ignoreCase = true)
+                l.remotePlaylistId != null && l.remotePlaylistId == r.remotePlaylistId
             }
         }
         return sortPlaylists(local + dedupedRemote, mode).distinctBy { it.id }
@@ -549,6 +552,47 @@ class PlaylistViewModel @Inject constructor(
      * order to Room. YouTube-only playlists have no remote move API, so they
      * stay locked.
      */
+    /** Bulk remove for long-press selection. Indices are original track
+     *  indices; removing descending keeps earlier indices valid. */
+    fun removeTracks(playlistId: Long, indices: Collection<Int>) {
+        if (indices.isEmpty()) return
+        viewModelScope.launch {
+            val sorted = indices.sortedDescending()
+            if (playlistId < 0L) {
+                sorted.forEach { idx -> runCatching { ytMusicLibraryManager.removeTrack(playlistId, idx) } }
+                loadDetail(playlistId)
+            } else {
+                sorted.forEach { idx -> runCatching { playlistRepository.removeTrack(playlistId, idx) } }
+                _uiState.update { current ->
+                    current.copy(detailPlaylist = current.detailPlaylist?.takeIf { it.id == playlistId }, toastMessage = "Songs removed from playlist")
+                }
+                load()
+                loadDetail(playlistId)
+                localMusicLibrary.cleanupOrphansAsync()
+            }
+        }
+    }
+
+    /** Bulk add for long-press selection: chosen Room playlists plus an
+     *  optional brand-new one created on the spot. */
+    fun addTracksToPlaylists(playlistIds: Set<Long>, newPlaylistTitle: String?, tracks: List<GeneratedTrack>) {
+        if (tracks.isEmpty()) return
+        if (playlistIds.isEmpty() && newPlaylistTitle.isNullOrBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                val ids = playlistIds.toMutableList()
+                if (!newPlaylistTitle.isNullOrBlank()) {
+                    ids.add(playlistRepository.createCustom(newPlaylistTitle).id)
+                }
+                ids.forEach { id ->
+                    tracks.forEach { track -> runCatching { playlistRepository.addTrack(id, track) } }
+                }
+                _toastMessage.emit("Added ${tracks.size} songs")
+            }.onFailure { android.util.Log.e("PlaylistViewModel", "addTracksToPlaylists failed", it) }
+            load()
+        }
+    }
+
     fun moveTrack(playlistId: Long, fromIndex: Int, toIndex: Int) {
         if (fromIndex == toIndex) return
         if (playlistId < 0L) {

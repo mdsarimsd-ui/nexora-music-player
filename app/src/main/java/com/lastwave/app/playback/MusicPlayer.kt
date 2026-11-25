@@ -3795,7 +3795,11 @@ class MusicPlayer @Inject constructor(
         }
         val snapshot = _state.value
         // If user taps the song currently playing, restart it from 0:00 immediately
-        if (index in snapshot.queue.indices && index == snapshot.currentIndex) {
+        // -- unless it is sitting on a dead play state (an earlier resolve failed,
+        // or playback never started). Re-resolving gets the stream again instead
+        // of replaying whatever failed the first time.
+        val currentIsDead = snapshot.error != null || player.playbackState == Player.STATE_IDLE
+        if (index in snapshot.queue.indices && index == snapshot.currentIndex && !currentIsDead) {
             seekTo(0)
             player.play()
             return@onMain

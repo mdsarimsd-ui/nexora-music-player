@@ -166,14 +166,14 @@ private class AiBubbleView(context: android.content.Context) : View(context) {
         canvas.drawCircle(cx, cy, r * (1.15f + 0.07f * kotlin.math.sin(phase)), glow)
         core.shader = RadialGradient(
             cx, cy, r,
-            intArrayOf(0xFF7C4DFF, 0xFFFF5EA2),
+            intArrayOf(0xFF7C4DFF.toInt(), 0xFFFF5EA2.toInt()),
             null,
             Shader.TileMode.CLAMP,
         )
         canvas.drawCircle(cx, cy, r * 0.72f, core)
         sweep.shader = SweepGradient(
             cx, cy,
-            intArrayOf(0x00FFFFFF, 0x88FFFFFF, 0x00FFFFFF),
+            intArrayOf(0x00FFFFFF, 0x88FFFFFF.toInt(), 0x00FFFFFF),
             floatArrayOf(0f, (phase / (2f * Math.PI.toFloat())).coerceIn(0f, 1f), 1f),
         )
         canvas.drawCircle(cx, cy, r * 0.72f + 7f, sweep)

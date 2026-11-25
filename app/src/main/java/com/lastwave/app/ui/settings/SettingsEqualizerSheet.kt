@@ -960,13 +960,13 @@ private fun EqKnob(
             modifier = Modifier
                 .size(104.dp)
                 .pointerInput(Unit) {
-                    androidx.compose.foundation.gestures.detectDragGestures(
+                    detectDragGestures(
                         onDragStart = {
                             haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                         },
                         onDragEnd = { onValueChange(local.roundToInt()) },
                         onDragCancel = { onValueChange(local.roundToInt()) },
-                        onDragUpdate = { change, _ ->
+                        onDrag = { change, _ ->
                         change.consume()
                         val dx = change.position.x - size.width / 2f
                         val dy = change.position.y - size.height / 2f

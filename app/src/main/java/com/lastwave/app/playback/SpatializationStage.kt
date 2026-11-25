@@ -128,8 +128,10 @@ class SpatializationStage {
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
-                val outL = mono * gL * 0.80f + wet * gL * 0.50f
-                val outR = mono * gR * 0.80f + wet * gR * 0.50f
+                val gLf = gL.toFloat()
+                val gRf = gR.toFloat()
+                val outL = mono * gLf * 0.80f + wet * gLf * 0.50f
+                val outR = mono * gRf * 0.80f + wet * gRf * 0.50f
                 output.putFloat(pos, outL)
                 output.putFloat(pos + Float.SIZE_BYTES, outR)
                 pos += 2 * Float.SIZE_BYTES

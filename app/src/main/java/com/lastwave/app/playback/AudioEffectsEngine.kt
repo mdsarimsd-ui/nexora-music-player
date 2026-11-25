@@ -120,7 +120,7 @@ class AudioEffectsEngine @Inject constructor(
             EQ_BAND_FREQS_HZ.forEachIndexed { index, hz ->
                 val gain = settings.gainsDb.getOrElse(index) { 0f }
                 add(
-                    eqNative.NativeFilter(
+                    com.lastwave.app.playback.eq.ParametricEqNative.NativeFilter(
                         type = 0, // peaking
                         frequencyHz = hz.toFloat(),
                         gainDb = gain,
@@ -131,7 +131,7 @@ class AudioEffectsEngine @Inject constructor(
             }
             if (settings.bassEnabled && settings.bassStrength > 0) {
                 add(
-                    eqNative.NativeFilter(
+                    com.lastwave.app.playback.eq.ParametricEqNative.NativeFilter(
                         type = 1, // low shelf
                         frequencyHz = 90f,
                         gainDb = settings.bassStrength / 100f * 12f,

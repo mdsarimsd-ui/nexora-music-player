@@ -85,7 +85,7 @@ class LikedSongsManager @Inject constructor(
         val matches = urls.mapNotNull { url ->
             val norm = LocalOfflineRepository.normalizeUrl(url)
             localSongs.firstOrNull { t ->
-                t.playbackUrl?.let { LocalOfflineRepository.normalizeUrl(it) } == norm
+                t.url.let { LocalOfflineRepository.normalizeUrl(it) } == norm
             }
         }
         if (matches.isNotEmpty()) mergeTracks(matches)
@@ -96,7 +96,7 @@ class LikedSongsManager @Inject constructor(
         val norm = LocalOfflineRepository.normalizeUrl(url)
         val liked = playlistRepository.getLikedSongs() ?: return@withLock false
         val remaining = liked.tracks.filterNot {
-            it.playbackUrl?.let { u -> LocalOfflineRepository.normalizeUrl(u) } == norm
+            it.url.let { u -> LocalOfflineRepository.normalizeUrl(u) } == norm
         }
         if (remaining.size == liked.tracks.size) return@withLock false
         playlistRepository.replaceTracksForSync(liked.id, remaining, liked.tracks) != null

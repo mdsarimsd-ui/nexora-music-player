@@ -1,5 +1,14 @@
 package com.lastwave.app.ui.ai
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.provider.Settings
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,6 +27,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +59,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lastwave.app.data.ai.AiPlaylistSuggestion
@@ -73,6 +99,77 @@ fun AiAssistantSheet(
     var requestInput by remember { mutableStateOf("") }
     var chipsVisible by remember { mutableStateOf(true) }
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    var voiceOn by remember { mutableStateOf(true) }
+    var listening by remember { mutableStateOf(false) }
+
+    // Spoken answers: every assistant reply is read out, Assistant-style.
+    val tts = remember { runCatching { TextToSpeech(context) { } }.getOrNull() }
+    androidx.compose.runtime.DisposableEffect(tts) {
+        onDispose { tts?.shutdown() }
+    }
+    LaunchedEffect(chat, voiceOn) {
+        val last = chat.lastOrNull()
+        if (voiceOn && tts != null && last != null && !last.fromUser && !last.isError && last.playlist == null) {
+            runCatching {
+                tts.speak(last.text.take(600), TextToSpeech.QUEUE_FLUSH, null, "nexora-ai")
+            }
+        }
+    }
+
+    // Speech in: the composer fills itself from what you say, then sends.
+    val speech = remember {
+        runCatching {
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                SpeechRecognizer.createSpeechRecognizer(context)
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
+    androidx.compose.runtime.DisposableEffect(speech) {
+        onDispose { speech?.destroy() }
+    }
+    fun startListening() {
+        val recognizer = speech ?: return
+        listening = true
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+        recognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onResults(results: Bundle?) {
+                listening = false
+                val text = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull().orEmpty()
+                if (text.isNotBlank()) {
+                    chipsVisible = false
+                    if (text.contains("playlist", ignoreCase = true) || text.contains("mix", ignoreCase = true)) {
+                        viewModel.buildPlaylist(text)
+                    } else {
+                        viewModel.ask(text)
+                    }
+                }
+            }
+            override fun onPartialResults(partialResults: Bundle?) {
+                partialResults
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                    ?.let { requestInput = it }
+            }
+            override fun onError(error: Int) {
+                listening = false
+            }
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+        recognizer.startListening(intent)
+    }
 
     // Decide fresh-vs-saved only once the real saved settings have landed,
     // never from the placeholder defaults.
@@ -112,6 +209,38 @@ fun AiAssistantSheet(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text("Ask AI", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { voiceOn = !voiceOn }) {
+                    Icon(
+                        if (voiceOn) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                        contentDescription = "Spoken answers",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = {
+                    if (Settings.canDrawOverlays(context)) {
+                        if (AiOverlayService.running) {
+                            AiOverlayService.stop(context)
+                        } else {
+                            AiOverlayService.start(context)
+                        }
+                    } else {
+                        runCatching {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + context.packageName),
+                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }
+                }) {
+                    Icon(
+                        Icons.Filled.PictureInPictureAlt,
+                        contentDescription = "Floating AI bubble",
+                        tint = if (AiOverlayService.running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             if (!settingsReady) {
@@ -133,9 +262,9 @@ fun AiAssistantSheet(
                             modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text("Add your Gemini key", style = MaterialTheme.typography.titleMedium)
+                            Text("Add your AI key", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Stored only on this device. Get a free key at aistudio.google.com/apikey.",
+                                "Stored only on this device. Any key works: Google (aistudio.google.com/apikey), OpenAI, Groq or OpenRouter - the app detects which one you paste.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -145,7 +274,7 @@ fun AiAssistantSheet(
                                     keyInput = it
                                     viewModel.setApiKey(it.trim())
                                 },
-                                label = { Text("Gemini API key") },
+                                label = { Text("API key") },
                                 singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -258,6 +387,43 @@ fun AiAssistantSheet(
                     }
                 }
 
+                if (busy || listening) {
+                    val orbTransition = rememberInfiniteTransition(label = "ai_orb")
+                    val orbScale by orbTransition.animateFloat(
+                        initialValue = 0.85f,
+                        targetValue = 1.15f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(650, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                        label = "orb_scale",
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .scale(orbScale)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.tertiary,
+                                        ),
+                                    ),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                if (listening) "listening" else "thinking",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -271,6 +437,23 @@ fun AiAssistantSheet(
                         keyboardActions = KeyboardActions(onSend = { send() }),
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(
+                        onClick = {
+                            if (listening) {
+                                listening = false
+                                speech?.stopListening()
+                            } else {
+                                startListening()
+                            }
+                        },
+                        enabled = !busy || listening,
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = if (listening) "Stop listening" else "Ask by voice",
+                            tint = if (listening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = { send() }, enabled = !busy && requestInput.isNotBlank()) {
                         Icon(Icons.Filled.Send, contentDescription = "Send")
                     }

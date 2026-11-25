@@ -650,9 +650,16 @@ internal fun EqualizerSheet(
                         }
                     }
                 }
+                var lastPreampApplied by remember { mutableStateOf<Float?>(null) }
                 Slider(
                     value = preampLocal.coerceIn(-4f, 2f),
-                    onValueChange = { preampLocal = (Math.round(it * 2f) / 2f) },
+                    onValueChange = {
+                        preampLocal = (Math.round(it * 2f) / 2f)
+                        if (preampLocal != lastPreampApplied) {
+                            lastPreampApplied = preampLocal
+                            onSetPreamp(preampLocal)
+                        }
+                    },
                     onValueChangeFinished = { onSetPreamp(preampLocal) },
                     valueRange = -4f..2f,
                 )
@@ -951,6 +958,7 @@ private fun EqKnob(
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var local by remember(value) { mutableStateOf(value.toFloat()) }
+    var lastApplied by remember(value) { mutableStateOf(value) }
     val accentColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
     val faceColor = MaterialTheme.colorScheme.surfaceContainer
@@ -975,6 +983,11 @@ private fun EqKnob(
                         if (m < 45.0) m += 360.0
                         m = m.coerceIn(135.0, 405.0)
                         local = (((m - 135.0) / 270.0) * 100.0).toFloat()
+                        val stepped = local.roundToInt()
+                        if (stepped != lastApplied) {
+                            lastApplied = stepped
+                            onValueChange(stepped)
+                        }
                         },
                     )
                 },

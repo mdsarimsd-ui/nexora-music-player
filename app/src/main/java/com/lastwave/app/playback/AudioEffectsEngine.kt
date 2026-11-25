@@ -124,7 +124,7 @@ class AudioEffectsEngine @Inject constructor(
                         type = 0, // peaking
                         frequencyHz = hz.toFloat(),
                         gainDb = gain,
-                        q = 1.4f,
+                        q = 2.15f,
                         enabled = gain != 0f,
                     )
                 )
@@ -135,7 +135,7 @@ class AudioEffectsEngine @Inject constructor(
             return
         }
         val maxBoost = filters.maxOf { it.gainDb }
-        val preamp = -(maxBoost * 0.6f).coerceIn(0f, 10f)
+        val preamp = -(maxBoost * 0.5f).coerceIn(0f, 8f)
         eqNative.publish(chainOn, preamp, filters)
     }
 

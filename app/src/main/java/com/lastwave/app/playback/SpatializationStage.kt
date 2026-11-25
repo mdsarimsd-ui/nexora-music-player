@@ -28,6 +28,8 @@ enum class SpatializationMode(val label: String) {
  */
 class SpatializationStage {
     @Volatile var mode: SpatializationMode = SpatializationMode.OFF
+    /** Last mode process() saw, so a fresh mode restarts its swing from 0. */
+    private var lastAppliedMode: SpatializationMode = SpatializationMode.OFF
 
     private var panRad = 0.0
     private var alternationPhase = 0.0
@@ -94,6 +96,13 @@ class SpatializationStage {
 
     fun process(output: ByteBuffer, channelCount: Int, sampleRateHz: Int) {
         val mode = mode
+        if (mode != lastAppliedMode) {
+            // A newly engaged (or switched) 8D / 16D starts its swing from the
+            // center immediately, instead of continuing a stale rotation.
+            lastAppliedMode = mode
+            panRad = 0.0
+            alternationPhase = 0.0
+        }
         if (mode == SpatializationMode.OFF || channelCount != 2 || sampleRateHz <= 0) return
         ensureReverb(sampleRateHz)
         val originalOrder = output.order()

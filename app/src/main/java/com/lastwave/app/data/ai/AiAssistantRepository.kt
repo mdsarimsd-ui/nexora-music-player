@@ -48,10 +48,28 @@ private data class AiTrackDto(
  * summarized for the diagnosis mode. Everything runs only when the user has
  * enabled the assistant and pasted their own API key.
  */
+/** AI providers the app can talk to, and the key shapes that select them. */
+enum class AiProvider(val keyPrefix: String, val baseUrl: String, val defaultModel: String) {
+    GEMINI("AIza", "https://generativelanguage.googleapis.com", "gemini-3.8-flash"),
+    OPENAI("sk-", "https://api.openai.com/v1", "gpt-4o-mini"),
+    GROQ("gsk_", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    OPENROUTER("sk-or-", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini"),
+}
+
+/** Reads the pasted key's own shape: whatever the user has works, no setting needed. */
+fun detectAiProvider(apiKey: String): AiProvider = when {
+    apiKey.startsWith(AiProvider.OPENROUTER.keyPrefix) -> AiProvider.OPENROUTER
+    apiKey.startsWith(AiProvider.GROQ.keyPrefix) -> AiProvider.GROQ
+    apiKey.startsWith(AiProvider.GEMINI.keyPrefix) -> AiProvider.GEMINI
+    apiKey.startsWith(AiProvider.OPENAI.keyPrefix) -> AiProvider.OPENAI
+    else -> AiProvider.GEMINI
+}
+
 @Singleton
 class AiAssistantRepository @Inject constructor(
     private val aiPreferences: AiPreferences,
     private val geminiClient: GeminiClient,
+    private val openAiClient: OpenAiCompatClient,
     private val songPlayStatsDao: SongPlayStatsDao,
     private val downloadedTrackDao: DownloadedTrackDao,
     private val playlistRepository: PlaylistRepository,
@@ -59,10 +77,28 @@ class AiAssistantRepository @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    /** Routes to the right provider for the saved key, model defaulted per provider. */
+    private suspend fun callModel(
+        apiKey: String,
+        model: String,
+        system: String,
+        prompt: String,
+    ): Result<String> {
+        val provider = detectAiProvider(apiKey)
+        val resolved = when (provider) {
+            AiProvider.GEMINI -> if (model.isBlank()) provider.defaultModel else model
+            else -> if (model.isBlank() || model.startsWith("gemini")) provider.defaultModel else model
+        }
+        return when (provider) {
+            AiProvider.GEMINI -> geminiClient.generate(apiKey, resolved, system, prompt)
+            else -> openAiClient.generate(provider.baseUrl, apiKey, resolved, system, prompt)
+        }
+    }
+
     /** Free-form ask: "what should I listen to tonight?" and similar. */
     suspend fun ask(prompt: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching { usableSettings() }.mapCatching {
-            geminiClient.generate(
+            callModel(
                 it.apiKey,
                 it.model,
                 ASSISTANT_SYSTEM_PROMPT,
@@ -82,7 +118,7 @@ class AiAssistantRepository @Inject constructor(
                     appendLine()
                     append("Request: ").append(userPrompt)
                 }
-                val answer = geminiClient.generate(
+                val answer = callModel(
                     settings.apiKey,
                     settings.model,
                     PLAYLIST_SYSTEM_PROMPT,
@@ -101,13 +137,13 @@ class AiAssistantRepository @Inject constructor(
                 appendLine()
                 append(recentLogs())
             }
-            geminiClient.generate(settings.apiKey, settings.model, DIAGNOSE_SYSTEM_PROMPT, prompt).getOrThrow()
+            callModel(settings.apiKey, settings.model, DIAGNOSE_SYSTEM_PROMPT, prompt).getOrThrow()
         }
     }
 
     /** Connectivity check for the settings screen. */
     suspend fun testKey(settings: AiSettings): Result<String> =
-        geminiClient.generate(
+        callModel(
             settings.apiKey,
             settings.model,
             "You are a connection test. Reply with exactly: OK",

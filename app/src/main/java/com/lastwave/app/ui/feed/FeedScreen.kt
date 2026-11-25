@@ -89,6 +89,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import com.lastwave.app.ui.theme.liquidGlassSource
 import androidx.compose.material3.ModalBottomSheet
 import com.lastwave.app.ui.ai.AiAssistantSheet
+import com.lastwave.app.ui.ai.AiEntryBus
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -249,6 +250,9 @@ fun FeedScreen(
     var lastFeedTapMillis by remember { mutableLongStateOf(0L) }
     var isFeedTapRefreshing by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        AiEntryBus.openRequests.collect { showAiSheet = true }
+    }
     if (showAiSheet) {
         AiAssistantSheet(onDismiss = { showAiSheet = false })
     }

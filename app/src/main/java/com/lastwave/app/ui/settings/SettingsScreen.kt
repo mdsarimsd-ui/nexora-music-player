@@ -31,6 +31,7 @@ import com.lastwave.app.playback.haptics.MusicHapticsEngineMode
 import com.lastwave.app.playback.haptics.MusicHapticsIntensity
 import com.lastwave.app.playback.haptics.MusicHapticsMode
 import com.lastwave.app.ui.ai.AiAssistantSheet
+import com.lastwave.app.ui.ai.AiEntryBus
 import com.lastwave.app.ui.player.QualityGlyphs
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Group
@@ -472,6 +473,9 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showJamSheet by remember { mutableStateOf(false) }
     var showAiSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        AiEntryBus.openRequests.collect { showAiSheet = true }
+    }
     var activeToggleDetail by remember { mutableStateOf<ToggleDetailInfo?>(null) }
     val currentLanguage = remember(misc.appLanguageTag) { AppLanguage.fromTag(misc.appLanguageTag) }
 

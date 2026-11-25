@@ -299,9 +299,8 @@ fun MainShell(
     var joinSupportDismissedThisSession by rememberSaveable { mutableStateOf(false) }
 
     val currentSettings = settings
-    val shouldShowJoinSupport = currentSettings != null &&
-        !currentSettings.hasDismissedJoinSupportPrompt &&
-        !joinSupportDismissedThisSession
+    // Nexora: the LastWave community/support popup stays off.
+    val shouldShowJoinSupport = false
 
     if (shouldShowJoinSupport) {
         JoinSupportDialog(

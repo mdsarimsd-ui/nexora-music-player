@@ -553,7 +553,23 @@ internal fun MusicPlayer.resolveAndPlayQueueItem(index: Int) {
                                 error = error.message ?: "Unable to resolve audio",
                             )
                         }
-                        scheduleUnavailableMediaSkip(index, expectedMediaId, generation, error, allowAutoSkip = true, exhausted = true)
+                        // InnerTune/ViMusic behavior: a network-shaped resolve
+                        // failure holds the queue with tap-to-retry instead of
+                        // eating through it. Skipping on a connection blip marked
+                        // good songs unavailable for the whole session.
+                        if (isNetworkException(error)) {
+                            player.pause()
+                            _state.update {
+                                it.copy(
+                                    isPlaying = false,
+                                    isBuffering = false,
+                                    error = error.message?.takeIf(String::isNotBlank)
+                                        ?: "Network hiccup. Tap play to retry.",
+                                )
+                            }
+                        } else {
+                            scheduleUnavailableMediaSkip(index, expectedMediaId, generation, error, allowAutoSkip = true, exhausted = true)
+                        }
                     }
                 }
             } finally {

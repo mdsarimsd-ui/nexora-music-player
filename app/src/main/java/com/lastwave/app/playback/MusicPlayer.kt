@@ -5982,6 +5982,11 @@ class MusicPlayer @Inject constructor(
          *  `expire`); null = unknown or never expires. Stale prefetches are
          *  re-resolved instead of handed dead to ExoPlayer. */
         val expiresAtEpochMs: Long? = null,
+        /** Wall-clock ms when this stream was minted. Drives the staleness
+         *  cap for streams whose provider never reports an expiry: like
+         *  InnerTune's short-lived URL cache, an unknown-lifetime URL is
+         *  re-resolved instead of trusted indefinitely. */
+        val mintedAtEpochMs: Long = System.currentTimeMillis(),
         /** The stored videoId this stream replaced after it turned out
          *  unplayable. Set only by the title/artist rematch fallback; used
          *  to heal stored rows that pinned the dead id. */
@@ -5989,7 +5994,7 @@ class MusicPlayer @Inject constructor(
         val userAgent: String? = null,
     )
 
-    private fun isNetworkException(error: Throwable): Boolean {
+    internal fun isNetworkException(error: Throwable): Boolean {
         var cause: Throwable? = error
         while (cause != null) {
             if (cause is java.net.UnknownHostException ||
@@ -8917,9 +8922,15 @@ class MusicPlayer @Inject constructor(
         )
     }
 
-    internal fun ResolvedStream.isExpired(now: Long = System.currentTimeMillis()): Boolean =
-        expiresAtEpochMs?.let { it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
-            ?: (youtubeCandidate?.expiresAtEpochMs?.let { it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS } == true)
+    internal fun ResolvedStream.isExpired(now: Long = System.currentTimeMillis()): Boolean {
+        expiresAtEpochMs?.let { return it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
+        youtubeCandidate?.expiresAtEpochMs?.let { return it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
+        // Unknown lifetime: trust the mint only briefly, then force a fresh
+        // resolve. A URL whose expiry could not be read used to be trusted
+        // forever, and queue takeover handed a silently dead URL to the
+        // player, which surfaced as mass auto-skips.
+        return now - mintedAtEpochMs > UNKNOWN_EXPIRY_STALE_MS
+    }
 
     /** Addon media URLs carry `exp` (ms epoch; far-future = never expires).
      *  Tolerates s-epoch in case a proxy ever rewrites the param. */
@@ -9374,6 +9385,7 @@ class MusicPlayer @Inject constructor(
         /** Cap for the explicit shuffle-Previous listening history. */
         const val MAX_PLAY_HISTORY = 1_000 // shuffle reads it as "already played"; cover big playlists
         const val RESOLVED_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000L
+        const val UNKNOWN_EXPIRY_STALE_MS = 30 * 60 * 1000L
         /** Offline license renewal attempt before giving up to streaming. */
         const val OFFLINE_LICENSE_RENEW_TIMEOUT_MS = 8_000L
         val PERMANENT_PLAYBACK_ERROR_CODES = setOf(

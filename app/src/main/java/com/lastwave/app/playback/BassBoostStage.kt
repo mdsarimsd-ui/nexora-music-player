@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
  *
  * Three pieces, from the classic bass-enhancement recipe:
  *  1. A low-shelf biquad at 100 Hz (Q 0.707) lifting everything below the
- *     shelf by up to +9 dB, scaled by the equalizer sheet's Bass boost
+ *     shelf by up to +6 dB, scaled by the equalizer sheet's Bass boost
  *     strength (0-100). Coefficients are rebuilt from a smoothed gain so
  *     moving the slider never clicks.
  *  2. A beat punch: a fast/slow envelope pair on the boosted low band; when
@@ -60,7 +60,7 @@ class BassBoostStage(
         scope.launch {
             settings.collect { s ->
                 strength = s.bassStrength.coerceIn(0, 100) / 100f
-                targetGainDb = if (s.bassEnabled && strength > 0f) strength * 9f else 0f
+                targetGainDb = if (s.bassEnabled && strength > 0f) strength * 6f else 0f
             }
         }
     }
@@ -101,7 +101,7 @@ class BassBoostStage(
         if (!boosting) return
 
         val punchStrength = strength
-        val harmonicAmount = 0.12f * strength
+        val harmonicAmount = 0.06f * strength
         val originalOrder = output.order()
         try {
             output.order(ByteOrder.LITTLE_ENDIAN)
@@ -123,16 +123,16 @@ class BassBoostStage(
                     fastEnv = if (absLow > fastEnv) absLow else absLow + (fastEnv - absLow) * fastDecay
                     slowEnv += (fastEnv - slowEnv) * slowRise
                     val onset = (fastEnv - slowEnv).coerceAtLeast(0f) / (slowEnv + 0.05f)
-                    punch += ((onset.coerceAtMost(1.5f) * 0.8f) - punch) * 0.10f
-                    val extra = 1f + punch * punchStrength * 0.30f
+                    punch += ((onset.coerceAtMost(1.0f) * 0.6f) - punch) * 0.10f
+                    val extra = 1f + punch * punchStrength * 0.15f
 
                     // Soft second harmonic of the low band.
                     val harm = low * kotlin.math.abs(low) * harmonicAmount
 
                     val outL = (shelfL * extra + harm * 0.8f) * 0.92f
                     val outR = (shelfR * extra + harm * 0.8f) * 0.92f
-                    output.putFloat(p, outL.coerceIn(-1.0f, 1.0f))
-                    output.putFloat(p + Float.SIZE_BYTES, outR.coerceIn(-1.0f, 1.0f))
+                    output.putFloat(p, softClip(outL))
+                    output.putFloat(p + Float.SIZE_BYTES, softClip(outR))
                     p += 2 * Float.SIZE_BYTES
                 }
             } else {
@@ -144,11 +144,11 @@ class BassBoostStage(
                     fastEnv = if (absLow > fastEnv) absLow else absLow + (fastEnv - absLow) * fastDecay
                     slowEnv += (fastEnv - slowEnv) * slowRise
                     val onset = (fastEnv - slowEnv).coerceAtLeast(0f) / (slowEnv + 0.05f)
-                    punch += ((onset.coerceAtMost(1.5f) * 0.8f) - punch) * 0.10f
-                    val extra = 1f + punch * punchStrength * 0.30f
+                    punch += ((onset.coerceAtMost(1.0f) * 0.6f) - punch) * 0.10f
+                    val extra = 1f + punch * punchStrength * 0.15f
                     val harm = shelf * kotlin.math.abs(shelf) * harmonicAmount
                     val out = (shelf * extra + harm) * 0.92f
-                    output.putFloat(p, out.coerceIn(-1.0f, 1.0f))
+                    output.putFloat(p, softClip(out))
                     p += Float.SIZE_BYTES
                 }
             }
@@ -159,5 +159,15 @@ class BassBoostStage(
 
     private companion object {
         const val BASS_SHELF_HZ = 100f
+
+        /** Soft-knee limiter: below 0.95 the sample passes untouched, above
+         *  it bends instead of hard-clipping, so a hot bass line no longer
+         *  crackles on every kick. */
+        fun softClip(x: Float): Float {
+            val a = kotlin.math.abs(x)
+            if (a <= 0.95f) return x
+            val bent = 0.95f + (a - 0.95f) / (1f + (a - 0.95f) * 12f)
+            return kotlin.math.sign(x) * bent.coerceAtMost(1f)
+        }
     }
 }

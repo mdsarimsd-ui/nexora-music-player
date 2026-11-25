@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Queue
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -207,7 +208,7 @@ class MainShellViewModel @Inject constructor(
 
 private enum class MainTab(val labelRes: Int) {
     FEED(com.lastwave.app.R.string.nav_feed),
-    STATS(com.lastwave.app.R.string.nav_stats),
+    QUEUE(com.lastwave.app.R.string.nav_queue),
     PLAYLISTS(com.lastwave.app.R.string.nav_playlists),
 }
 
@@ -410,7 +411,7 @@ fun MainShell(
 
     Box(Modifier.fillMaxSize()) {
         val feedIndex = tabs.indexOf(MainTab.FEED)
-        // Composing Stats and Playlists on the launch frame (plus their own
+        // Composing Queue and Playlists on the launch frame (plus their own
         // loads recomposing them) froze the Feed's first load for seconds on
         // slower phones. Add them once the user leaves the Feed, then keep every
         // tab: tab handlers set selectedTabIndex before scrolling, so the jump
@@ -461,16 +462,7 @@ fun MainShell(
                             onOpenYouTubeLogin = onOpenYouTubeLogin,
                             feedTapEvents = feedTapEvents,
                         )
-                        MainTab.STATS -> HomeScreen(
-                            onOpenSettings = { showAccountMenu = true },
-                            onOpenSearch = onOpenSearch,
-                            onOpenDiscover = onOpenDiscover,
-                            onOpenGenres = onOpenGenres,
-                            onOpenListeningStats = onOpenListeningStats,
-                            onOpenFriends = onOpenFriends,
-                            onOpenDownloads = onOpenDownloads,
-                            avatarUrl = ytConnection.photoUrl.takeIf { ytConnection.isConnected },
-                        )
+                        MainTab.QUEUE -> com.lastwave.app.ui.player.QueueScreen()
                         MainTab.PLAYLISTS -> PlaylistScreen(
                             onOpenPlaylist = onOpenPlaylist,
                             onOpenFeedPlaylist = onOpenFeedPlaylist,
@@ -1236,7 +1228,7 @@ private fun FloatingNavItem(
 
 private fun MainTab.icon(): ImageVector = when (this) {
     MainTab.FEED -> Icons.Filled.Home
-    MainTab.STATS -> Icons.Filled.Leaderboard
+    MainTab.QUEUE -> Icons.Filled.Queue
     MainTab.PLAYLISTS -> Icons.AutoMirrored.Filled.QueueMusic
 }
 

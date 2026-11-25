@@ -898,7 +898,7 @@ class ListeningStatsViewModel @Inject constructor(
     private var songsMaster: List<SongsListRow> = emptyList()
     private var manualOrder: List<String> = emptyList()
 
-    private fun buildSongsRows() {
+    private suspend fun buildSongsRows() {
         val statsByKey = rawStatsList.associateBy { it.trackKey }
         val rows = LinkedHashMap<String, SongsListRow>()
 

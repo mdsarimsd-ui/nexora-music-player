@@ -30,6 +30,7 @@ import com.lastwave.app.playback.haptics.MusicHapticsConfig
 import com.lastwave.app.playback.haptics.MusicHapticsEngineMode
 import com.lastwave.app.playback.haptics.MusicHapticsIntensity
 import com.lastwave.app.playback.haptics.MusicHapticsMode
+import com.lastwave.app.ui.ai.AiAssistantSheet
 import com.lastwave.app.ui.player.QualityGlyphs
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Group
@@ -470,6 +471,7 @@ fun SettingsScreen(
     var showCookieLoginDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showJamSheet by remember { mutableStateOf(false) }
+    var showAiSheet by remember { mutableStateOf(false) }
     var activeToggleDetail by remember { mutableStateOf<ToggleDetailInfo?>(null) }
     val currentLanguage = remember(misc.appLanguageTag) { AppLanguage.fromTag(misc.appLanguageTag) }
 
@@ -670,6 +672,23 @@ fun SettingsScreen(
                                             stringResource(R.string.settings_jam_sub)
                                         },
                                         onClick = onOpenJam,
+                                        position = position,
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                SectionLabel("AI")
+                                SettingsGroup(rowCount = 1) { _, position ->
+                                    SettingsActionCard(
+                                        icon = Icons.Filled.AutoAwesome,
+                                        iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        title = "AI Assistant",
+                                        subtitle = "Mood playlists, song suggestions and playback diagnosis, powered by your own Gemini key",
+                                        onClick = { showAiSheet = true },
                                         position = position,
                                     )
                                 }
@@ -2712,6 +2731,10 @@ fun SettingsScreen(
         )
     }
 
+    if (showAiSheet) {
+        AiAssistantSheet(onDismiss = { showAiSheet = false })
+    }
+
     // -- Experimental 15-band equalizer --
     if (showEqSheet) {
         val loudnessState by viewModel.loudness.collectAsStateWithLifecycle()
@@ -2725,7 +2748,6 @@ fun SettingsScreen(
             onOpenAutoEq = {
                 showEqSheet = false
                 showAutoEq = true
-            },
             onSavePreset = viewModel::saveEqPreset,
             onRenamePreset = viewModel::renameEqPreset,
             onDeletePreset = viewModel::deleteEqPreset,

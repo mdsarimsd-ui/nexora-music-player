@@ -1767,6 +1767,7 @@ class MusicPlayer @Inject constructor(
                     // playing. applyDacRoutingFor lets only the live deck claim it.
                     internalDirect = internalDirectOutput,
                     loudness = LoudnessStage(loudnessPrefs.settings, loudnessAlbumKey),
+                    virtualizer = VirtualizerStage(equalizerPreferences.settings, applicationScope),
                 ).also { createdSink ->
                     createdSink.hapticsAnalyzer = musicHapticsController.createAnalyzer().also(hapticTaps::add)
                     createdSink.onConfiguredFormat = { rateHz, _, _ ->

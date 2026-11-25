@@ -88,6 +88,8 @@ class NativeProcessingAudioSink(
     private val loudness: LoudnessStage? = null,
     /** Per-song 8D / 16D rotating-pan spatializer; processed output only. */
     val spatializer: SpatializationStage = SpatializationStage(),
+    /** Musicolet-style 3D surround from the equalizer sheet; processed output only. */
+    val virtualizer: VirtualizerStage? = null,
     /** The provider both delegates were built with. */
     val outputBufferSizing: OutputBufferSizing? = null,
 ) : AudioSink {
@@ -921,6 +923,7 @@ class NativeProcessingAudioSink(
     private fun applyLoudness(output: ByteBuffer, presentationTimeUs: Long) {
         // Bit-Perfect promises an untouched signal even on its compat path.
         if (bitPerfectRequested) return
+        virtualizer?.process(output, outputChannelCount, processor.nativeOutputSampleRate)
         spatializer.process(output, outputChannelCount, processor.nativeOutputSampleRate)
         loudness?.process(output, outputChannelCount, processor.nativeOutputSampleRate)
         val mediaUs = presentationTimeUs - streamOffsetUs

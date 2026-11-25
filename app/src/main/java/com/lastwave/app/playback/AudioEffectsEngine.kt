@@ -80,6 +80,7 @@ class AudioEffectsEngine @Inject constructor(
         applicationScope.launch(Dispatchers.Default) {
             equalizerPreferences.settings.collect { settings ->
                 equalizerSettings = settings
+                publishMusicoletEq(settings)
                 requestApply()
             }
         }
@@ -97,6 +98,55 @@ class AudioEffectsEngine @Inject constructor(
                 requestApply()
             }
         }
+    }
+
+    /**
+     * Publishes the Musicolet-style sheet (15 band gains + bass shelf) to the
+     * process-wide native parametric EQ, which the Float32 DSP chain and every
+     * direct route pick up. The old AutoEQ publisher keeps working: whichever
+     * feature the user last touched owns the chain. Only stands the chain down
+     * once the Musicolet EQ itself has been on in this session, so AutoEQ
+     * survives a settings re-read.
+     */
+    @Volatile private var musicoletEqEverOn = false
+
+    private fun publishMusicoletEq(settings: EqualizerSettings) {
+        val eqNative = com.lastwave.app.playback.eq.ParametricEqNative
+        if (!eqNative.isAvailable) return
+        if (settings.enabled) musicoletEqEverOn = true
+        if (!settings.enabled && !musicoletEqEverOn) return
+        val filters = buildList {
+            EQ_BAND_FREQS_HZ.forEachIndexed { index, hz ->
+                val gain = settings.gainsDb.getOrElse(index) { 0f }
+                add(
+                    eqNative.NativeFilter(
+                        type = 0, // peaking
+                        frequencyHz = hz.toFloat(),
+                        gainDb = gain,
+                        q = 1.2f,
+                        enabled = gain != 0f,
+                    )
+                )
+            }
+            if (settings.bassEnabled && settings.bassStrength > 0) {
+                add(
+                    eqNative.NativeFilter(
+                        type = 1, // low shelf
+                        frequencyHz = 90f,
+                        gainDb = settings.bassStrength / 100f * 12f,
+                        q = 0.7f,
+                        enabled = true,
+                    )
+                )
+            }
+        }
+        if (!settings.enabled && !settings.bassEnabled) {
+            eqNative.publish(false, 0f, emptyList())
+            return
+        }
+        val maxBoost = filters.maxOf { it.gainDb }
+        val preamp = -(maxBoost * 0.4f).coerceIn(0f, 8f)
+        eqNative.publish(settings.enabled, preamp, filters)
     }
 
     /** Follows ExoPlayer whenever Android creates or replaces its audio session. */

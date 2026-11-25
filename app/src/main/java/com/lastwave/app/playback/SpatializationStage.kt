@@ -3,7 +3,6 @@ package com.lastwave.app.playback
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -15,81 +14,142 @@ enum class SpatializationMode(val label: String) {
 }
 
 /**
- * Rotating-pan spatializer for the 8D / 16D toggle. It turns the stereo image
- * around the listener the way popular "8D audio" mixes do: the L/R pair
- * rotates slowly through a full circle, swapping channel phase once per
- * revolution, which reads as the mix passing behind the head. 16D rotates
- * twice as fast and adds a quick left/right alternation on top.
+ * YouTube-style rotating-pan spatializer for the 8D / 16D toggle.
  *
- * Runs on the native DSP output path right after the loudness stage. Only
+ * The mix is summed to a mono source, panned hard around the head in a full
+ * circle (8D) or swung ear to ear (16D), and fed through a Schroeder reverb
+ * so it carries the room tail those mixes have. 8D does one full circle every
+ * 10 s; 16D swings between hard left and hard right about every second, the
+ * "looming" jump the YouTube mixes are known for.
+ *
+ * Runs on the native DSP output path right after the virtualizer. Only
  * stereo Float32 buffers are touched; anything else passes through
  * untouched, and bit-perfect output skips this stage entirely.
  */
 class SpatializationStage {
     @Volatile var mode: SpatializationMode = SpatializationMode.OFF
 
-    private var phaseRad = 0.0
-    private var lastSampleRateHz = 0
+    private var panRad = 0.0
+    private var alternationPhase = 0.0
+    private var reverbRateHz = 0
 
-    /** One full circle every 12 s for 8D, every 6 s for 16D. */
+    private var combDelay = IntArray(0)
+    private var combIdx = IntArray(0)
+    private var combBuf = emptyArray<FloatArray>()
+    private var combStore = FloatArray(0)
+    private var allpassDelay = IntArray(0)
+    private var allpassIdx = IntArray(0)
+    private var allpassBuf = emptyArray<FloatArray>()
+
+    /** One full circle every 10 s for 8D; no circle for 16D. */
     private val rotationHz: Double
-        get() = if (mode == SpatializationMode.D8) 1.0 / 12.0 else 1.0 / 6.0
+        get() = if (mode == SpatializationMode.D8) 1.0 / 10.0 else 0.0
 
-    /** 16D's fast triangle alternation between the ears, in Hz. */
+    /** 16D swings between the ears at 0.45 Hz (about every 1.1 s). */
     private val alternationHz: Double
-        get() = if (mode == SpatializationMode.D16) 0.75 else 0.0
+        get() = if (mode == SpatializationMode.D16) 0.45 else 0.0
+
+    private fun ensureReverb(sampleRateHz: Int) {
+        if (sampleRateHz == reverbRateHz && combBuf.isNotEmpty()) return
+        reverbRateHz = sampleRateHz
+        panRad = 0.0
+        alternationPhase = 0.0
+        val scale = sampleRateHz / 44100.0
+        combDelay = intArrayOf(1119, 1189, 1277, 1367)
+            .map { (it * scale).toInt().coerceAtLeast(1) }
+            .toIntArray()
+        combIdx = IntArray(combDelay.size)
+        combBuf = Array(combDelay.size) { FloatArray(combDelay[it]) }
+        combStore = FloatArray(combDelay.size)
+        allpassDelay = intArrayOf(225, 556)
+            .map { (it * scale).toInt().coerceAtLeast(1) }
+            .toIntArray()
+        allpassIdx = IntArray(allpassDelay.size)
+        allpassBuf = Array(allpassDelay.size) { FloatArray(allpassDelay[it]) }
+    }
+
+    /** One-sample Schroeder reverb (4 combs + 2 allpass) on the mono source. */
+    private fun reverb(input: Float): Float {
+        var sum = 0f
+        for (c in combBuf.indices) {
+            val buf = combBuf[c]
+            val idx = combIdx[c]
+            val y = buf[idx]
+            combStore[c] += 0.30f * (y - combStore[c])
+            buf[idx] = input + combStore[c] * 0.78f
+            combIdx[c] = (idx + 1) % combDelay[c]
+            sum += y
+        }
+        var out = sum * 0.25f
+        for (a in allpassBuf.indices) {
+            val buf = allpassBuf[a]
+            val idx = allpassIdx[a]
+            val bufOut = buf[idx]
+            out = -out + bufOut
+            buf[idx] = out * 0.5f
+            allpassIdx[a] = (idx + 1) % allpassDelay[a]
+        }
+        return out
+    }
 
     fun process(output: ByteBuffer, channelCount: Int, sampleRateHz: Int) {
         val mode = mode
         if (mode == SpatializationMode.OFF || channelCount != 2 || sampleRateHz <= 0) return
-        if (sampleRateHz != lastSampleRateHz) {
-            phaseRad = 0.0
-            lastSampleRateHz = sampleRateHz
-        }
+        ensureReverb(sampleRateHz)
         val originalOrder = output.order()
         try {
             output.order(ByteOrder.LITTLE_ENDIAN)
-            val ratePerFrame = 2.0 * PI * rotationHz / sampleRateHz
+            val rotationPerFrame = 2.0 * PI * rotationHz / sampleRateHz
             val alternationPerFrame = 2.0 * PI * alternationHz / sampleRateHz
-            var theta = phaseRad
-            var alternationPhase = 0.0
+            var theta = panRad
+            var alt = alternationPhase
             var pos = output.position()
             val limit = output.limit()
             while (pos + 2 * Float.SIZE_BYTES <= limit) {
                 val l = output.getFloat(pos)
                 val r = output.getFloat(pos + Float.SIZE_BYTES)
-                val cosT = cos(theta)
-                val sinT = sin(theta)
-                // Rotation of the stereo pair is orthonormal, so peak levels
-                // stay unchanged; the phase swap halfway through is what makes
-                // the mix feel like it moves behind the listener.
-                var outL = l * cosT - r * sinT
-                var outR = l * sinT + r * cosT
-                if (alternationPerFrame > 0.0) {
-                    val pan = abs(2.0 * (alternationPhase / (2.0 * PI) % 1.0) - 1.0)
-                    outL *= 0.4 + 0.6 * (1.0 - pan)
-                    outR *= 0.4 + 0.6 * pan
-                    alternationPhase = (alternationPhase + alternationPerFrame) % (2.0 * PI)
+                val mono = (l + r) * 0.5f
+                val wet = reverb(mono)
+                val gL: Double
+                val gR: Double
+                if (rotationPerFrame > 0.0) {
+                    // Full circle around the head: hard left, hard right, then
+                    // the phase-inverted pass behind the listener.
+                    gL = cos(theta)
+                    gR = sin(theta)
+                    theta += rotationPerFrame
+                    if (theta > TAU) theta %= TAU
+                } else {
+                    // Ear to ear: a smooth hard-left to hard-right swing and
+                    // back, equal power, so each ear goes fully silent in turn.
+                    val tri = 0.5 - 0.5 * cos(alt)
+                    gL = cos(0.5 * PI * tri)
+                    gR = sin(0.5 * PI * tri)
+                    alt += alternationPerFrame
+                    if (alt > TAU) alt %= TAU
                 }
-                output.putFloat(pos, outL.toFloat())
-                output.putFloat(pos + Float.SIZE_BYTES, outR.toFloat())
+                val outL = mono * gL * 0.80f + wet * gL * 0.50f
+                val outR = mono * gR * 0.80f + wet * gR * 0.50f
+                output.putFloat(pos, outL)
+                output.putFloat(pos + Float.SIZE_BYTES, outR)
                 pos += 2 * Float.SIZE_BYTES
-                theta += ratePerFrame
             }
-            if (theta > TAU_WRAP_GUARD) theta %= 2.0 * PI
-            phaseRad = theta
+            panRad = theta
+            alternationPhase = alt
         } finally {
             output.order(originalOrder)
         }
     }
 
     fun reset() {
-        phaseRad = 0.0
-        lastSampleRateHz = 0
+        panRad = 0.0
+        alternationPhase = 0.0
+        reverbRateHz = 0
+        combBuf = emptyArray()
+        allpassBuf = emptyArray()
     }
 
     private companion object {
-        /** Keeps the rotation phase from losing float precision on long sessions. */
-        const val TAU_WRAP_GUARD = 1.0e5
+        const val TAU = 2.0 * PI
     }
 }

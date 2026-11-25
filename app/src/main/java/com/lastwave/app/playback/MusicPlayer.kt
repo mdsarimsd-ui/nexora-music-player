@@ -5815,7 +5815,17 @@ class MusicPlayer @Inject constructor(
         val attempts = (unavailableAttemptCounts[failedMediaId] ?: 0) + 1
         unavailableAttemptCounts[failedMediaId] = attempts
         val alreadyRetriedExhaustively = errorRetryCount >= MAX_PLAYBACK_RETRIES
-        if (!exhausted && !provenDead && !alreadyRetriedExhaustively && attempts < MIN_UNAVAILABLE_ATTEMPTS_BEFORE_SKIP) {
+        // Local files that still fail after the player's automatic retries are
+        // genuinely unplayable on this device (unreadable or unsupported);
+        // holding the whole queue on a "tap to retry" card is how one bad
+        // file made playback feel broken. Skip past the file and keep the
+        // music going. Streams keep the hold: their failures are usually
+        // transient network blips worth a manual retry.
+        val isFailedLocalFile = failedMediaId?.startsWith("local:") == true ||
+            currentTrack?.isLocalTrack() == true
+        if (!exhausted && !provenDead && !alreadyRetriedExhaustively &&
+            attempts < MIN_UNAVAILABLE_ATTEMPTS_BEFORE_SKIP && !isFailedLocalFile
+        ) {
             player.pause()
             _state.update {
                 it.copy(

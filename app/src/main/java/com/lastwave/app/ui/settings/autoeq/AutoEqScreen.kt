@@ -51,6 +51,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -98,6 +99,8 @@ import com.lastwave.app.data.autoeq.AutoEqMeasurement
 import com.lastwave.app.data.autoeq.AutoEqState
 import com.lastwave.app.data.autoeq.AutoEqTargets
 import com.lastwave.app.data.autoeq.PeqFilter
+import com.lastwave.app.data.autoeq.PeqPreset
+import com.lastwave.app.data.autoeq.PeqPresets
 import com.lastwave.app.data.autoeq.PeqFilterType
 import com.lastwave.app.data.autoeq.PeqMath
 import com.lastwave.app.data.autoeq.PeqSettings
@@ -259,6 +262,33 @@ fun AutoEqScreen(
                         }
                     }
                 }
+            }
+        }
+
+        item {
+            SectionCard {
+                val matchedPreset = PeqPresets.all.firstOrNull { it.settings == state.settings }
+                Text(
+                    "Presets",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PeqPresets.all.forEach { preset: PeqPreset ->
+                        FilterChip(
+                            selected = matchedPreset?.id == preset.id,
+                            onClick = { viewModel.applyPreset(preset) },
+                            label = { Text(preset.name) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    matchedPreset?.description ?: "One tap to shape the sound, then fine-tune below",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 

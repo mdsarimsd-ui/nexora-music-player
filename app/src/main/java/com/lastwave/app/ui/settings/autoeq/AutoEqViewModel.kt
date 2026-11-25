@@ -128,6 +128,13 @@ class AutoEqViewModel @Inject constructor(
     fun startManual() = viewModelScope.launch { controller.startManual() }
     fun clearProfile() = viewModelScope.launch { controller.clearProfile() }
 
+    /** Applies a built-in preset as the active custom curve and turns the EQ on. */
+    fun applyPreset(preset: PeqPreset) = viewModelScope.launch {
+        controller.setCustomSettings(preset.settings)
+        controller.setEnabled(true)
+        _messages.tryEmit(R.string.autoeq_msg_preset_applied)
+    }
+
     fun updateFilter(index: Int, filter: PeqFilter) = editSettings { settings ->
         if (index !in settings.filters.indices) return@editSettings settings
         settings.copy(filters = settings.filters.toMutableList().apply { set(index, filter) })

@@ -148,4 +148,30 @@ class AutoEqTest {
         // The over-ear reference has no delta against itself.
         assertThat(parsed.targets.first { it.id == "harman_oe_2018" }.deltaOverEar.maxOf { abs(it) }).isLessThan(0.01)
     }
+
+    @Test
+    fun presetsAreUniqueWellFormedAndNonClipping() {
+        assertThat(PeqPresets.all.map { it.id }.distinct()).hasSize(PeqPresets.all.size)
+        PeqPresets.all.forEach { preset ->
+            assertThat(preset.settings.filters.size).isAtMost(PeqSettings.MAX_FILTERS)
+            assertThat(preset.name).isNotEmpty()
+            assertThat(preset.settings.preampDb).isAtMost(0.0)
+            // Auto preamp keeps the loudest point at or below 0 dB, so the chain cannot clip.
+            val peak = PeqMath.LOG_GRID.maxOf { PeqMath.responseDb(preset.settings, it) }
+            assertThat(peak).isLessThan(0.01)
+        }
+    }
+
+    @Test
+    fun presetCurvesHaveTheExpectedShape() {
+        val bass = PeqPresets.byId("bass_boost")!!
+        assertThat(PeqMath.responseDb(bass.settings, 80.0)).isGreaterThan(2.0)
+        assertThat(PeqMath.responseDb(bass.settings, 4000.0)).isLessThan(0.5)
+
+        val flat = PeqPresets.byId("flat")!!
+        assertThat(flat.settings.isFlat).isTrue()
+
+        val vocal = PeqPresets.byId("vocal")!!
+        assertThat(PeqMath.responseDb(vocal.settings, 3000.0)).isGreaterThan(1.0)
+    }
 }

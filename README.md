@@ -160,22 +160,6 @@ cd nexora-music-player
 
 ---
 
-## Acknowledgements
-
-Nexora is a fork of **[LastWave](https://github.com/Clash-Projects/LastWave-native)** (GPL-3.0) with a rebrand and an expanded equalizer. The equalizer experience is inspired by the beloved **[Musicolet](https://play.google.com/store/apps/details?id=in.krosbits.musolet)** music player.
-
-Nexora is made possible thanks to these open-source projects (carried over from LastWave):
-
-- **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — InnerTubeX & stream resolving
-- **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** — Canvas extraction & Liquid Glass inspiration
-- **[InnerTune](https://github.com/z-huang/InnerTune)** — InnerTube extraction architecture
-- **[Decent USB Audio Driver](https://github.com/silva96/decent-usb-audio-driver)** — Bit-perfect direct USB DAC audio engine
-- **[AutoEQ](https://github.com/jaakkopasanen/AutoEq)** — Headphone & IEM frequency-response calibration targets
-- **[NewPipe](https://github.com/TeamNewPipe/NewPipeExtractor)** — Stream extraction & media URL resolving
-- **[SponsorBlock](https://sponsor.ajay.app/)** — Video segment detection for music video intro skit synchronization
-
----
-
 ## Disclaimer
 
 This project is not affiliated with YouTube, Google, Spotify, or Musicolet. Streaming from YouTube Music may violate their Terms of Service in some regions; use at your own discretion. The app is distributed as an installable APK and is not published on Google Play.

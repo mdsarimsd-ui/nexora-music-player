@@ -57,8 +57,50 @@ class LikedSongsManager @Inject constructor(
     private val applicationScope: CoroutineScope,
     private val settingsPreferences: SettingsPreferences,
     private val likeSync: YtLikedSongsSync,
+    private val localOfflineRepository: com.lastwave.app.data.localmusic.LocalOfflineRepository,
 ) {
     private val mutationMutex get() = likeSync.mutationMutex
+
+    init {
+        // Heal stranded likes: device-local tracks liked before the Liked
+        // Songs playlist knew about them get merged in once at startup.
+        applicationScope.launch {
+            runCatching { syncLocalLikedTracks() }
+                .onFailure { android.util.Log.w("LikedSongsManager", "Local liked-tracks sync failed", it) }
+        }
+    }
+
+    /**
+     * Device-local likes live in [LocalOfflineRepository]; the Liked Songs
+     * playlist must list them too. Resolves each liked URL against the
+     * built-in "Local songs" playlist and merges the matches in.
+     */
+    suspend fun syncLocalLikedTracks() = withContext(Dispatchers.Default) {
+        val urls = runCatching { localOfflineRepository.likedUrls.value }.getOrDefault(emptySet())
+        if (urls.isEmpty()) return@withContext
+        val localSongs = runCatching {
+            playlistRepository.getAll().firstOrNull { it.mode == LOCAL_SONGS_MODE }?.tracks.orEmpty()
+        }.getOrDefault(emptyList())
+        if (localSongs.isEmpty()) return@withContext
+        val matches = urls.mapNotNull { url ->
+            val norm = LocalOfflineRepository.normalizeUrl(url)
+            localSongs.firstOrNull { t ->
+                t.playbackUrl?.let { LocalOfflineRepository.normalizeUrl(it) } == norm
+            }
+        }
+        if (matches.isNotEmpty()) mergeTracks(matches)
+    }
+
+    /** Removes a device-local liked track from the Liked Songs playlist. */
+    suspend fun removeTrackByUrl(url: String): Boolean = withContext(Dispatchers.Default) { mutationMutex.withLock {
+        val norm = LocalOfflineRepository.normalizeUrl(url)
+        val liked = playlistRepository.getLikedSongs() ?: return@withLock false
+        val remaining = liked.tracks.filterNot {
+            it.playbackUrl?.let { u -> LocalOfflineRepository.normalizeUrl(u) } == norm
+        }
+        if (remaining.size == liked.tracks.size) return@withLock false
+        playlistRepository.replaceTracksForSync(liked.id, remaining, liked.tracks) != null
+    } }
     private val json = Json { ignoreUnknownKeys = true }
     private val _likedTrackKeys = MutableStateFlow<Set<String>>(emptySet())
     val likedTrackKeys: StateFlow<Set<String>> = _likedTrackKeys.asStateFlow()

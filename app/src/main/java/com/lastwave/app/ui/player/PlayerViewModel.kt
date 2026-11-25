@@ -353,6 +353,7 @@ class PlayerViewModel @Inject constructor(
     val mixLauncher: com.lastwave.app.ui.generate.MixLauncher,
     private val ytMusicLibraryManager: com.lastwave.app.data.ytmusic.YtMusicLibraryManager,
     private val trackLikeController: com.lastwave.app.data.playlist.TrackLikeController,
+    private val likedSongsManager: com.lastwave.app.data.playlist.LikedSongsManager,
     private val downloadManager: com.lastwave.app.data.download.TrackDownloadManager,
     private val routeNavigator: com.lastwave.app.ui.navigation.AppRouteNavigator,
     private val localMusicLibrary: com.lastwave.app.data.localmusic.LocalMusicLibrary,
@@ -923,6 +924,25 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** Adds a local/downloaded track to library (Room) playlists from the
+     *  add-to-playlist sheet, so those songs show up inside them. */
+    fun addTrackToRoomPlaylists(playlistIds: Set<Long>, track: PlayableTrack) {
+        if (playlistIds.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                playlistIds.forEach { id ->
+                    runCatching { playlistRepository.addTrack(id, track.toGeneratedTrack()) }
+                        .onFailure { android.util.Log.e("PlayerViewModel", "addTrack failed for playlist $it", it) }
+                }
+                refreshCustomPlaylists()
+                _toastMessage.emit("Added to playlist")
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "Error adding track to playlists", e)
+                _toastMessage.emit("Couldn't add to playlist")
+            }
+        }
+    }
+
     fun addToOfflinePlaylists(playlistIds: Set<String>, track: PlayableTrack) {
         val url = track.playbackUrl?.takeIf { it.isNotBlank() } ?: return
         if (playlistIds.isEmpty()) return
@@ -955,6 +975,12 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val liked = trackLikeController.toggle(track)
+                // Device-local likes must also land in (and leave) the Liked
+                // Songs playlist so the playlist actually lists them.
+                if (track.videoId.isNullOrBlank() && track.isLocalTrack()) {
+                    if (liked) likedSongsManager.mergeTracks(listOf(track.toGeneratedTrack()))
+                    else track.playbackUrl?.let { likedSongsManager.removeTrackByUrl(it) }
+                }
                 _toastMessage.emit(if (liked) "Added to Liked Songs" else "Removed from Liked Songs")
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -970,6 +996,9 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 trackLikeController.like(track)
+                if (track.videoId.isNullOrBlank() && track.isLocalTrack()) {
+                    likedSongsManager.mergeTracks(listOf(track.toGeneratedTrack()))
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {

@@ -60,7 +60,7 @@ class BassBoostStage(
         scope.launch {
             settings.collect { s ->
                 strength = s.bassStrength.coerceIn(0, 100) / 100f
-                targetGainDb = if (s.bassEnabled && strength > 0f) strength * 6f else 0f
+                targetGainDb = if (s.bassEnabled && strength > 0f) strength * 4f else 0f
             }
         }
     }
@@ -101,7 +101,7 @@ class BassBoostStage(
         if (!boosting) return
 
         val punchStrength = strength
-        val harmonicAmount = 0.06f * strength
+        val harmonicAmount = 0.02f * strength
         val originalOrder = output.order()
         try {
             output.order(ByteOrder.LITTLE_ENDIAN)
@@ -123,8 +123,8 @@ class BassBoostStage(
                     fastEnv = if (absLow > fastEnv) absLow else absLow + (fastEnv - absLow) * fastDecay
                     slowEnv += (fastEnv - slowEnv) * slowRise
                     val onset = (fastEnv - slowEnv).coerceAtLeast(0f) / (slowEnv + 0.05f)
-                    punch += ((onset.coerceAtMost(1.0f) * 0.6f) - punch) * 0.10f
-                    val extra = 1f + punch * punchStrength * 0.15f
+                    punch += ((onset.coerceAtMost(1.0f) * 0.35f) - punch) * 0.10f
+                    val extra = 1f + punch * punchStrength * 0.05f
 
                     // Soft second harmonic of the low band.
                     val harm = low * kotlin.math.abs(low) * harmonicAmount
@@ -144,8 +144,8 @@ class BassBoostStage(
                     fastEnv = if (absLow > fastEnv) absLow else absLow + (fastEnv - absLow) * fastDecay
                     slowEnv += (fastEnv - slowEnv) * slowRise
                     val onset = (fastEnv - slowEnv).coerceAtLeast(0f) / (slowEnv + 0.05f)
-                    punch += ((onset.coerceAtMost(1.0f) * 0.6f) - punch) * 0.10f
-                    val extra = 1f + punch * punchStrength * 0.15f
+                    punch += ((onset.coerceAtMost(1.0f) * 0.35f) - punch) * 0.10f
+                    val extra = 1f + punch * punchStrength * 0.05f
                     val harm = shelf * kotlin.math.abs(shelf) * harmonicAmount
                     val out = (shelf * extra + harm) * 0.92f
                     output.putFloat(p, out)

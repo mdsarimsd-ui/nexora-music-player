@@ -151,6 +151,7 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
@@ -175,6 +176,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -345,6 +348,7 @@ internal fun QueuePanel(
     var dragStartOffsetY by remember { mutableFloatStateOf(0f) }
     var menuIndex by remember { mutableStateOf<Int?>(null) }
     var edgeScrollJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var queueSortMenu by remember { mutableStateOf(false) }
     fun cancelEdgeScroll() {
         edgeScrollJob?.cancel()
         edgeScrollJob = null
@@ -480,6 +484,58 @@ internal fun QueuePanel(
                     "Scroll to current song",
                     tint = Color.White.copy(alpha = 0.90f),
                 )
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    player.toggleShuffle()
+                },
+                enabled = state.queue.size > 1,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = 0.14f)),
+            ) {
+                Icon(
+                    Icons.Filled.Shuffle,
+                    "Shuffle queue",
+                    tint = if (state.shuffleEnabled) Color.White else Color.White.copy(alpha = 0.55f),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Box {
+                IconButton(
+                    onClick = { queueSortMenu = true },
+                    enabled = state.queue.size > 1 && !isQueueLocked,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.14f)),
+                ) {
+                    Icon(
+                        Icons.Filled.Sort,
+                        "Sort queue",
+                        tint = if (state.queue.size > 1 && !isQueueLocked) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.35f),
+                    )
+                }
+                DropdownMenu(
+                    expanded = queueSortMenu,
+                    onDismissRequest = { queueSortMenu = false },
+                ) {
+                    DropdownMenuItem(text = { Text("Title (A to Z)") }, onClick = {
+                        queueSortMenu = false
+                        player.sortQueueBy(0)
+                    })
+                    DropdownMenuItem(text = { Text("Artist (A to Z)") }, onClick = {
+                        queueSortMenu = false
+                        player.sortQueueBy(1)
+                    })
+                    DropdownMenuItem(text = { Text("Longest first") }, onClick = {
+                        queueSortMenu = false
+                        player.sortQueueBy(2)
+                    })
+                }
             }
             Spacer(Modifier.width(8.dp))
             IconButton(

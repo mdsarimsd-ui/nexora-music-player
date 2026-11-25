@@ -4236,6 +4236,50 @@ class MusicPlayer @Inject constructor(
             persistPlaybackSession()
         }
     }
+    /** Sorts the queue while keeping the currently playing song in front.
+     *  mode: 0 = title, 1 = artist, 2 = longest first. */
+    fun sortQueueBy(mode: Int) = onMain {
+        val snapshot = _state.value
+        if (snapshot.queue.size <= 1) return@onMain
+        val baseId: (PlayableTrack) -> String = { item ->
+            item.videoId ?: item.playbackUrl ?: "${'$'}{item.artist}|${'$'}{item.title}|${'$'}{item.album}"
+        }
+        val counts = mutableMapOf<String, Int>()
+        val ids = snapshot.queue.map { item ->
+            val base = baseId(item)
+            val n = counts.getOrDefault(base, 0)
+            counts[base] = n + 1
+            "$base#$n"
+        }
+        if (ids.size != ids.toSet().size) return@onMain
+        val current = snapshot.currentIndex.coerceAtLeast(0)
+        val curId = ids.getOrNull(current) ?: return@onMain
+        val items = snapshot.queue.mapIndexed { i, t -> Triple(ids[i], i, t) }
+        val cur = items.firstOrNull { it.first == curId } ?: return@onMain
+        val rest = items.filter { it.first != curId }
+        val sorted = when (mode) {
+            1 -> rest.sortedBy { it.third.artist.lowercase() }
+            2 -> rest.sortedByDescending { it.third.durationMs ?: 0L }
+            else -> rest.sortedBy { it.third.title.lowercase() }
+        }
+        val target = listOf(cur) + sorted
+        if (isCasting) {
+            val queue = target.map { it.third }
+            _state.value = snapshot.copy(queue = queue, currentIndex = 0, current = queue.first())
+            persistPlaybackSession()
+            return@onMain
+        }
+        // Replay the permutation with moveMediaItem so the player and the UI stay in sync.
+        val working = ids.toMutableList()
+        for (slot in target.indices) {
+            val wantId = target[slot].first
+            val at = working.indexOf(wantId)
+            if (at in 0 until player.mediaItemCount && at != slot) {
+                player.moveMediaItem(at, slot)
+                working.add(slot, working.removeAt(at))
+            }
+        }
+    }
     fun moveQueueItem(fromIndex: Int, toIndex: Int) = onMain {
         if (fromIndex == toIndex) return@onMain
         if (isCasting) {

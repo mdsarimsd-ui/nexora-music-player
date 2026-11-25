@@ -150,6 +150,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -353,16 +354,25 @@ internal fun AddToPlaylistDialogHost(
 ) {
     if (track.videoId.isNullOrBlank() && track.isLocalTrack()) {
         val offlinePlaylists by viewModel.offlinePlaylists.collectAsStateWithLifecycle()
+        // Show the library's own (Room) custom playlists here too, so a playlist
+        // created from the Library tab is selectable for local songs and the
+        // song actually lands inside it.
+        val roomPlaylists by viewModel.customPlaylists.collectAsStateWithLifecycle()
         AddToOfflinePlaylistDialog(
             track = track,
             playlists = offlinePlaylists,
+            roomPlaylists = roomPlaylists.filter { it.mode == "custom" && it.id >= 0L },
             onDismiss = onDismiss,
             onAdd = { selectedIds ->
                 viewModel.addToOfflinePlaylists(selectedIds, track)
                 onDismiss()
             },
+            onAddRoom = { selectedIds ->
+                viewModel.addTrackToRoomPlaylists(selectedIds, track)
+                onDismiss()
+            },
             onCreate = { name ->
-                viewModel.createOfflinePlaylistAndAdd(name, track)
+                viewModel.createPlaylistAndAdd(name, track)
                 onDismiss()
             },
         )
@@ -790,6 +800,80 @@ internal fun AddToPlaylistDialog(
                             }
                         }
                     }
+                    if (roomPlaylists.isNotEmpty()) {
+                        item(key = "roomPlaylistsHeader") {
+                            Text(
+                                "Your playlists",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                            )
+                        }
+                        itemsIndexed(roomPlaylists, key = { _, p -> "room:${p.id}" }) { _, playlist ->
+                            val selId = "room:${playlist.id}"
+                            val selected = selId in selectedIds
+                            val gen = remember(track) { track.toGeneratedTrack() }
+                            val alreadyAdded = playlist.tracks.any {
+                                it.key == gen.key ||
+                                    (it.name.equals(gen.name, ignoreCase = true) && it.artist.equals(gen.artist, ignoreCase = true))
+                            }
+                            val rowColor by animateColorAsState(
+                                targetValue = if (selected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
+                                animationSpec = tween(ExpressiveMotion.Quick),
+                                label = "roomPlaylistSelectionColor",
+                            )
+                            Surface(
+                                onClick = {
+                                    selectedIds = if (selected) selectedIds - selId else selectedIds + selId
+                                },
+                                shape = RoundedCornerShape(18.dp),
+                                color = rowColor,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.size(44.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Filled.LibraryMusic,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
+                                    }
+                                    Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
+                                        Text(
+                                            playlist.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        val count = playlist.tracks.size
+                                        val countText = if (count == 1) "1 track" else "$count tracks"
+                                        Text(
+                                            if (alreadyAdded) "$countText • Already added" else countText,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (alreadyAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    Checkbox(checked = selected, onCheckedChange = null)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -832,8 +916,10 @@ internal fun AddToPlaylistDialog(
 private fun AddToOfflinePlaylistDialog(
     track: PlayableTrack,
     playlists: List<LocalOfflineRepository.OfflinePlaylist>,
+    roomPlaylists: List<SavedPlaylist> = emptyList(),
     onDismiss: () -> Unit,
     onAdd: (Set<String>) -> Unit,
+    onAddRoom: (Set<Long>) -> Unit = {},
     onCreate: (String) -> Unit,
 ) {
     var selectedIds by remember(track) { mutableStateOf(emptySet<String>()) }
@@ -959,7 +1045,7 @@ private fun AddToOfflinePlaylistDialog(
                 }
             }
 
-            if (playlists.isEmpty()) {
+            if (playlists.isEmpty() && roomPlaylists.isEmpty()) {
                 Text(
                     stringResource(com.lastwave.app.R.string.local_empty_offline_playlists),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1031,6 +1117,80 @@ private fun AddToOfflinePlaylistDialog(
                             }
                         }
                     }
+                    if (roomPlaylists.isNotEmpty()) {
+                        item(key = "roomPlaylistsHeader") {
+                            Text(
+                                "Your playlists",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                            )
+                        }
+                        itemsIndexed(roomPlaylists, key = { _, p -> "room:${p.id}" }) { _, playlist ->
+                            val selId = "room:${playlist.id}"
+                            val selected = selId in selectedIds
+                            val gen = remember(track) { track.toGeneratedTrack() }
+                            val alreadyAdded = playlist.tracks.any {
+                                it.key == gen.key ||
+                                    (it.name.equals(gen.name, ignoreCase = true) && it.artist.equals(gen.artist, ignoreCase = true))
+                            }
+                            val rowColor by animateColorAsState(
+                                targetValue = if (selected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
+                                animationSpec = tween(ExpressiveMotion.Quick),
+                                label = "roomPlaylistSelectionColor",
+                            )
+                            Surface(
+                                onClick = {
+                                    selectedIds = if (selected) selectedIds - selId else selectedIds + selId
+                                },
+                                shape = RoundedCornerShape(18.dp),
+                                color = rowColor,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.size(44.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Filled.LibraryMusic,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
+                                    }
+                                    Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
+                                        Text(
+                                            playlist.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        val count = playlist.tracks.size
+                                        val countText = if (count == 1) "1 track" else "$count tracks"
+                                        Text(
+                                            if (alreadyAdded) "$countText • Already added" else countText,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (alreadyAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    Checkbox(checked = selected, onCheckedChange = null)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1042,7 +1202,14 @@ private fun AddToOfflinePlaylistDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(com.lastwave.app.R.string.common_cancel)) }
                 Spacer(Modifier.width(8.dp))
                 Button(
-                    onClick = { onAdd(selectedIds) },
+                    onClick = {
+                        val offlineSel = selectedIds.filterNot { it.startsWith("room:") }.toSet()
+                        val roomSel = selectedIds.filter { it.startsWith("room:") }
+                            .mapNotNull { it.removePrefix("room:").toLongOrNull() }
+                            .toSet()
+                        onAdd(offlineSel)
+                        if (roomSel.isNotEmpty()) onAddRoom(roomSel)
+                    },
                     enabled = selectedIds.isNotEmpty(),
                 ) {
                     Icon(Icons.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(19.dp))

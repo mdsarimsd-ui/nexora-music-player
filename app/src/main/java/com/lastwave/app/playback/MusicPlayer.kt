@@ -1370,6 +1370,12 @@ class MusicPlayer @Inject constructor(
                             runCatching { mediaCache.removeResource(cacheKey) }
                             preparedStreams.remove(cacheKey)
                         }
+                        if (failedLocalStream && retry >= 2) {
+                            // Two failed attempts on the enhanced path:
+                            // the next attempt runs the plain platform
+                            // output once, then the DSP path returns.
+                            audioSinks.forEach { sink -> runCatching { sink.requestPlainOutputOnce() } }
+                        }
                         val retryDelayMs = if (failedLocalStream || (failedLosslessStream && !playedAudibly)) {
                             0L
                         } else {
@@ -1384,7 +1390,10 @@ class MusicPlayer @Inject constructor(
                         val stream = withFallbackAttempts {
                             resolveTrackAudioStream(
                                 track = updated,
-                                allowLocalDownloads = false,
+                                // A local track's own file is the only
+                                // source it has: the retry must re-open it,
+                                // or one error becomes a permanent skip.
+                                allowLocalDownloads = failedLocalStream,
                                 videoId = videoId,
                                 allowLossless = failedMediaId !in losslessBypassMediaIds,
                                 excludedLosslessUrls = if (failedLosslessStream) {

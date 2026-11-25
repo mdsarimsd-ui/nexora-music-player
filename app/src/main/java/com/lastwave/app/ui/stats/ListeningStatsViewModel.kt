@@ -902,14 +902,22 @@ class ListeningStatsViewModel @Inject constructor(
         val statsByKey = rawStatsList.associateBy { it.trackKey }
         val rows = LinkedHashMap<String, SongsListRow>()
 
+        // Play stats key on this track is "artist_title", all lowercase.
+        fun statsKeyFor(title: String, artist: String): String =
+            "${artist.trim().lowercase()}_${title.trim().lowercase()}"
+
         fun playCountFor(title: String, artist: String): Int =
-            statsByKey["${title}|${artist}".lowercase()]?.playCount?.coerceAtLeast(0) ?: 0
+            statsByKey[statsKeyFor(title, artist)]?.playCount?.coerceAtLeast(0) ?: 0
 
         fun lastPlayedFor(title: String, artist: String): Long =
-            statsByKey["${title}|${artist}".lowercase()]?.lastPlayedAtMillis ?: 0L
+            statsByKey[statsKeyFor(title, artist)]?.lastPlayedAtMillis ?: 0L
 
         // App downloads first so a downloaded copy wins over a playlist duplicate.
-        downloadedFallbackList.forEach { dt ->
+        // Read the downloads table fresh too, so a stale or empty cached list
+        // can never hide the user's downloaded songs.
+        val downloads = runCatching { downloadedTrackDao.getAllList() }.getOrNull()
+            .orEmpty().ifEmpty { downloadedFallbackList }
+        downloads.forEach { dt ->
             val key = "${dt.title}|${dt.artist}".lowercase()
             if (key in rows) return@forEach
             rows[key] = SongsListRow(

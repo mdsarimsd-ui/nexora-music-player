@@ -822,6 +822,7 @@ private fun SongsListRowItem(
                 embeddedUrl = row.artworkUrl,
                 fallbackIcon = Icons.Filled.MusicNote,
                 modifier = Modifier.size(46.dp).clip(RoundedCornerShape(10.dp)),
+                decodeSizePx = 96,
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

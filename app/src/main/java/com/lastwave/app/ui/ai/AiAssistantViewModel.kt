@@ -10,18 +10,18 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed interface AiUiState {
-    data object Idle : AiUiState
-    data object Working : AiUiState
-    data class Answer(val text: String) : AiUiState
-    data class Playlist(val suggestion: AiPlaylistSuggestion) : AiUiState
-    data class Error(val message: String) : AiUiState
-    data class Saved(val name: String) : AiUiState
-}
+/** One turn in the assistant transcript. */
+data class AiChatMessage(
+    val fromUser: Boolean,
+    val text: String,
+    val playlist: AiPlaylistSuggestion? = null,
+    val isError: Boolean = false,
+)
 
 @HiltViewModel
 class AiAssistantViewModel @Inject constructor(
@@ -32,8 +32,16 @@ class AiAssistantViewModel @Inject constructor(
     val settings: StateFlow<AiSettings> = aiPreferences.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiSettings())
 
-    private val _ui = MutableStateFlow<AiUiState>(AiUiState.Idle as AiUiState)
-    val ui: StateFlow<AiUiState> = _ui
+    /** True once the first real saved-settings value has arrived. */
+    val settingsReady: StateFlow<Boolean> = aiPreferences.settings
+        .map { true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _chat = MutableStateFlow<List<AiChatMessage>>(emptyList())
+    val chat: StateFlow<List<AiChatMessage>> = _chat
+
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy
 
     fun setEnabled(enabled: Boolean) {
         viewModelScope.launch { aiPreferences.setEnabled(enabled) }
@@ -47,53 +55,100 @@ class AiAssistantViewModel @Inject constructor(
         viewModelScope.launch { aiPreferences.setModel(model) }
     }
 
-    fun saveApiKey() {
-        // The sheet writes on each change; kept as a hook for future "save" UX.
+    private fun append(message: AiChatMessage) {
+        _chat.value = _chat.value + message
     }
 
     fun buildPlaylist(request: String) {
-        if (request.isBlank()) return
-        _ui.value = AiUiState.Working
+        if (request.isBlank() || _busy.value) return
+        append(AiChatMessage(fromUser = true, text = request))
+        _busy.value = true
         viewModelScope.launch {
             aiAssistantRepository.suggestPlaylist(request).fold(
-                onSuccess = { _ui.value = AiUiState.Playlist(it) },
-                onFailure = { _ui.value = AiUiState.Error(it.message ?: "Something went wrong") },
+                onSuccess = {
+                    append(
+                        AiChatMessage(
+                            fromUser = false,
+                            text = it.note.ifBlank { "Here's a playlist for that." },
+                            playlist = it,
+                        ),
+                    )
+                },
+                onFailure = {
+                    append(
+                        AiChatMessage(
+                            fromUser = false,
+                            text = it.message ?: "Something went wrong",
+                            isError = true,
+                        ),
+                    )
+                },
             )
+            _busy.value = false
         }
     }
 
     fun diagnose() {
-        _ui.value = AiUiState.Working
+        if (_busy.value) return
+        append(AiChatMessage(fromUser = true, text = "Why did songs skip?"))
+        _busy.value = true
         viewModelScope.launch {
             aiAssistantRepository.diagnosePlayback().fold(
-                onSuccess = { _ui.value = AiUiState.Answer(it) },
-                onFailure = { _ui.value = AiUiState.Error(it.message ?: "Something went wrong") },
+                onSuccess = { append(AiChatMessage(fromUser = false, text = it)) },
+                onFailure = {
+                    append(
+                        AiChatMessage(
+                            fromUser = false,
+                            text = it.message ?: "Something went wrong",
+                            isError = true,
+                        ),
+                    )
+                },
             )
+            _busy.value = false
         }
     }
 
     fun ask(prompt: String) {
-        if (prompt.isBlank()) return
-        _ui.value = AiUiState.Working
+        if (prompt.isBlank() || _busy.value) return
+        append(AiChatMessage(fromUser = true, text = prompt))
+        _busy.value = true
         viewModelScope.launch {
             aiAssistantRepository.ask(prompt).fold(
-                onSuccess = { _ui.value = AiUiState.Answer(it) },
-                onFailure = { _ui.value = AiUiState.Error(it.message ?: "Something went wrong") },
+                onSuccess = { append(AiChatMessage(fromUser = false, text = it)) },
+                onFailure = {
+                    append(
+                        AiChatMessage(
+                            fromUser = false,
+                            text = it.message ?: "Something went wrong",
+                            isError = true,
+                        ),
+                    )
+                },
             )
+            _busy.value = false
         }
     }
 
     fun savePlaylist(suggestion: AiPlaylistSuggestion) {
-        _ui.value = AiUiState.Working
+        if (_busy.value) return
+        _busy.value = true
         viewModelScope.launch {
             aiAssistantRepository.saveSuggestedPlaylist(suggestion).fold(
-                onSuccess = { _ui.value = AiUiState.Saved(suggestion.name) },
-                onFailure = { _ui.value = AiUiState.Error(it.message ?: "Could not save the playlist") },
+                onSuccess = {
+                    append(AiChatMessage(fromUser = false, text = "Saved \"${suggestion.name}\" to your playlists."))
+                },
+                onFailure = {
+                    append(
+                        AiChatMessage(
+                            fromUser = false,
+                            text = it.message ?: "Could not save the playlist",
+                            isError = true,
+                        ),
+                    )
+                },
             )
+            _busy.value = false
         }
-    }
-
-    fun reset() {
-        _ui.value = AiUiState.Idle
     }
 }

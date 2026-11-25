@@ -129,14 +129,14 @@ class SpatializationStage {
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
-                val earFloor = 0.18f
+                val earFloor = 0.08f
                 val panL = earFloor + (1f - earFloor) * gL.coerceAtLeast(0f)
                 val panR = earFloor + (1f - earFloor) * gR.coerceAtLeast(0f)
-                val dry = 0.60f
-                val panDepth = 0.50f
-                val wetMix = 0.28f
-                val outL = (l * dry + mono * panL * panDepth + wet * panL * wetMix).coerceIn(-1.0f, 1.0f)
-                val outR = (r * dry + mono * panR * panDepth + wet * panR * wetMix).coerceIn(-1.0f, 1.0f)
+                val dry = 0.35f
+                val panDepth = 0.85f
+                val wetMix = 0.30f
+                val outL = ((l * dry + mono * panL * panDepth + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
+                val outR = ((r * dry + mono * panR * panDepth + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 output.putFloat(pos, outL)
                 output.putFloat(pos + Float.SIZE_BYTES, outR)
                 pos += 2 * Float.SIZE_BYTES

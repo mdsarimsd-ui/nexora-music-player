@@ -890,7 +890,6 @@ class ListeningStatsViewModel @Inject constructor(
         val mins = totalMins % 60
         return if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
     }
-}
 
     // ---- Songs page: every device import, app download and generated song ----
 
@@ -1019,3 +1018,4 @@ class ListeningStatsViewModel @Inject constructor(
 
     /** mode: 0 = off, 1 = repeat all, 2 = repeat one. */
     fun setSongsRepeat(mode: Int) = musicPlayer.setRepeatMode(mode)
+}

@@ -62,6 +62,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -432,6 +439,8 @@ internal fun EqualizerCurveGraph(
 @Composable
 internal fun EqualizerSheet(
     eq: EqualizerSettings,
+    preampDb: Float = 0f,
+    onSetPreamp: (Float) -> Unit = {},
     onDismiss: () -> Unit,
     onSetEnabled: (Boolean) -> Unit,
     onPickPreset: (String) -> Unit,
@@ -537,78 +546,10 @@ internal fun EqualizerSheet(
                 }
             }
 
-            // Mode Switcher: 15-Band Graphic vs AutoEQ / Parametric EQ
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.GraphicEq,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "15-Band Graphic",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.Transparent,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable(onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                onOpenAutoEq()
-                            }),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.Headphones,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "AutoEQ / PEQ",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Master On/Off Switch Card
+            // Output device bar, Musicolet style: shows the output this
+            // profile follows, with the master equalizer toggle.
+            val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+            val deviceName = remember { currentOutputDeviceName(appContext) }
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -616,175 +557,270 @@ internal fun EqualizerSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp).fillMaxWidth(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Filled.Headphones,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.set_eq_enable), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                         Text(
-                            if (eq.enabled) "Shaping your music in real-time" else "Off \u2014 original audio passes through",
+                            deviceName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            "Profile remembered for this device",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
+                            maxLines = 1,
                         )
                     }
                     Switch(
                         checked = eq.enabled,
                         onCheckedChange = { enabled ->
-                            haptic.performHapticFeedback(if (enabled) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
+                            haptic.performHapticFeedback(if (enabled) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
                             onSetEnabled(enabled)
                         },
                     )
                 }
             }
 
-            // Real-Time Frequency Response Visualizer
-            EqualizerCurveGraph(
-                gains = gains,
-                enabled = eq.enabled,
-            )
-
-            // Musicolet-style sound FX: bass boost and 3D surround.
-            SectionLabel("Sound FX")
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 2.dp,
-                modifier = Modifier.fillMaxWidth(),
+            // Round Musicolet knobs: bass boost and 3D surround.
+            Row(
+                modifier = Modifier.fillMaxWidth().alpha(if (eq.enabled) 1f else 0.45f),
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    var bassOn by remember(eq.bassEnabled) { mutableStateOf(eq.bassEnabled) }
-                    var bassPct by remember(eq.bassStrength) { mutableStateOf(eq.bassStrength.toFloat()) }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Bass Boost", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                            Text(
-                                if (bassOn) "Extra low-end punch, always clean" else "Off",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = bassOn,
-                            onCheckedChange = { on ->
-                                haptic.performHapticFeedback(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
-                                bassOn = on
-                                onSetBass(on, bassPct.roundToInt())
-                            },
-                        )
-                    }
-                    if (bassOn) {
-                        Slider(
-                            value = bassPct,
-                            onValueChange = { bassPct = it },
-                            onValueChangeFinished = { onSetBass(true, bassPct.roundToInt()) },
-                            valueRange = 0f..100f,
-                        )
-                        Text(
-                            "${bassPct.roundToInt()}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    var virtOn by remember(eq.virtualizerEnabled) { mutableStateOf(eq.virtualizerEnabled) }
-                    var virtPct by remember(eq.virtualizerStrength) { mutableStateOf(eq.virtualizerStrength.toFloat()) }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text("3D Surround", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                            Text(
-                                if (virtOn) "Wider, roomier stereo image" else "Off",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = virtOn,
-                            onCheckedChange = { on ->
-                                haptic.performHapticFeedback(if (on) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
-                                virtOn = on
-                                onSetVirtualizer(on, virtPct.roundToInt())
-                            },
-                        )
-                    }
-                    if (virtOn) {
-                        Slider(
-                            value = virtPct,
-                            onValueChange = { virtPct = it },
-                            onValueChangeFinished = { onSetVirtualizer(true, virtPct.roundToInt()) },
-                            valueRange = 0f..100f,
-                        )
-                        Text(
-                            "${virtPct.roundToInt()}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // Presets Horizontal Flow
-            SectionLabel("Presets")
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                EqualizerPresets.ALL.forEach { preset ->
-                    FilterChip(
-                        selected = eq.presetName.equals(preset.name, ignoreCase = true),
-                        onClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick)
-                            onPickPreset(preset.name)
-                        },
-                        label = { Text(preset.name, style = MaterialTheme.typography.labelMedium) },
-                    )
-                }
-                if (eq.presetName == EqualizerPresets.CUSTOM_NAME) {
-                    FilterChip(selected = true, onClick = {}, label = { Text(stringResource(R.string.set_eq_custom), style = MaterialTheme.typography.labelMedium) })
-                }
-            }
-
-            // The listener's own named presets, usable on any output.
-            val canSaveMore = eq.userPresets.size < com.lastwave.app.data.local.MAX_USER_EQ_PRESETS
-            SectionLabel("My presets  ${eq.userPresets.size}/${com.lastwave.app.data.local.MAX_USER_EQ_PRESETS}")
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                eq.userPresets.forEach { preset ->
-                    FilterChip(
-                        selected = eq.presetName == preset.name,
-                        onClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick)
-                            onPickPreset(preset.name)
-                        },
-                        label = { Text(preset.name, style = MaterialTheme.typography.labelMedium) },
-                    )
-                }
-                androidx.compose.material3.AssistChip(
-                    enabled = canSaveMore,
-                    onClick = { nameDialogFor = "" },
-                    leadingIcon = {
-                        androidx.compose.material3.Icon(
-                            androidx.compose.material.icons.Icons.Filled.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    },
-                    label = {
-                        Text(
-                            if (canSaveMore) "Save as preset" else "Limit of ${com.lastwave.app.data.local.MAX_USER_EQ_PRESETS} reached",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    },
+                EqKnob(
+                    label = "Bass boost",
+                    value = eq.bassStrength.coerceIn(0, 100),
+                    onValueChange = { strength -> onSetBass(strength > 0, strength) },
+                )
+                EqKnob(
+                    label = "Surround Sound",
+                    value = eq.virtualizerStrength.coerceIn(0, 100),
+                    onValueChange = { strength -> onSetVirtualizer(strength > 0, strength) },
                 )
             }
+
+            // Preamp: headroom, flat or boost, with a fine slider.
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Preamp",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                var preampLocal by remember(preampDb) { mutableStateOf(preampDb) }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("Headroom" to -4f, "Off" to 0f, "Boost" to 2f).forEach { (label, db) ->
+                        val selected = kotlin.math.abs(preampLocal - db) < 0.05f
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    preampLocal = db
+                                    onSetPreamp(db)
+                                },
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    (if (db > 0f) "+" else "") + "${db.toInt()} dB",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                Slider(
+                    value = preampLocal.coerceIn(-4f, 2f),
+                    onValueChange = { preampLocal = (Math.round(it * 2f) / 2f) },
+                    onValueChangeFinished = { onSetPreamp(preampLocal) },
+                    valueRange = -4f..2f,
+                )
+                Text(
+                    "%.1f dB".format(preampLocal),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+
+            // Output volume, live from the system's media stream.
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Volume",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                val audio = remember {
+                    appContext.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                }
+                val maxVolume = remember { audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }
+                var volumePct by remember {
+                    mutableStateOf(
+                        if (maxVolume > 0) {
+                            audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) * 100f / maxVolume
+                        } else {
+                            0f
+                        },
+                    )
+                }
+                Slider(
+                    value = volumePct.coerceIn(0f, 100f),
+                    onValueChange = { pct ->
+                        volumePct = pct
+                        if (maxVolume > 0) {
+                            audio.setStreamVolume(
+                                android.media.AudioManager.STREAM_MUSIC,
+                                (pct / 100f * maxVolume).roundToInt().coerceIn(0, maxVolume),
+                                0,
+                            )
+                        }
+                    },
+                    valueRange = 0f..100f,
+                )
+                Text(
+                    "${volumePct.roundToInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+
+            // Preset bar: band count chip on the left, preset dropdown on the right.
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                var presetMenuOpen by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Icon(
+                            androidx.compose.material.icons.Icons.Filled.GraphicEq,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "${EQ_BAND_FREQS_HZ.size}",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { presetMenuOpen = true }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                if (eq.presetName == EqualizerPresets.CUSTOM_NAME) {
+                                    stringResource(R.string.set_eq_custom)
+                                } else {
+                                    eq.presetName
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            androidx.compose.material3.Icon(
+                                androidx.compose.material.icons.Icons.Filled.ArrowDropDown,
+                                contentDescription = null,
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = presetMenuOpen,
+                            onDismissRequest = { presetMenuOpen = false },
+                        ) {
+                            EqualizerPresets.ALL.sortedBy { it.name.lowercase() }.forEach { preset ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            preset.name,
+                                            fontWeight = if (eq.presetName.equals(preset.name, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal,
+                                        )
+                                    },
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        onPickPreset(preset.name)
+                                        presetMenuOpen = false
+                                    },
+                                )
+                            }
+                            if (eq.userPresets.isNotEmpty()) {
+                                HorizontalDivider()
+                                eq.userPresets.forEach { preset ->
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                preset.name,
+                                                fontWeight = if (eq.presetName == preset.name) FontWeight.Bold else FontWeight.Normal,
+                                            )
+                                        },
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                            onPickPreset(preset.name)
+                                            presetMenuOpen = false
+                                        },
+                                    )
+                                }
+                            }
+                            HorizontalDivider()
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Save as preset\u2026") },
+                                enabled = eq.userPresets.size < com.lastwave.app.data.local.MAX_USER_EQ_PRESETS,
+                                onClick = {
+                                    presetMenuOpen = false
+                                    nameDialogFor = ""
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             if (eq.isUserPreset(eq.presetName)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "Edits save into “${eq.presetName}” automatically",
+                        "Edits save into \u201c${eq.presetName}\u201d automatically",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
@@ -810,7 +846,7 @@ internal fun EqualizerSheet(
             deleteConfirmFor?.let { name ->
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = { deleteConfirmFor = null },
-                    title = { Text("Delete “$name”?") },
+                    title = { Text("Delete \u201c$name\u201d?") },
                     text = { Text("The sound keeps playing as Custom until you pick another preset.") },
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = {
@@ -843,7 +879,6 @@ internal fun EqualizerSheet(
                         .padding(vertical = 16.dp)
                         .alpha(curveAlpha),
                 ) {
-                    // Top Scale Label
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -867,7 +902,6 @@ internal fun EqualizerSheet(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Scrollable Horizontal Row of Native Equalizer Faders
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -903,8 +937,130 @@ internal fun EqualizerSheet(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             )
+,
+            )
         }
     }
+}
+
+/**
+ * Musicolet-style round knob: twist from the bottom-left (0%) clockwise to
+ * the bottom-right (100%). Commits once at the end of a drag, like the faders.
+ */
+@Composable
+private fun EqKnob(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var local by remember(value) { mutableStateOf(value.toFloat()) }
+    val accentColor = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+    val faceColor = MaterialTheme.colorScheme.surfaceContainer
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(104.dp)
+                .pointerInput(Unit) {
+                    androidx.compose.foundation.gestures.detectDragGestures(
+                        onDragStart = {
+                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        },
+                        onDragEnd = { onValueChange(local.roundToInt()) },
+                        onDragCancel = { onValueChange(local.roundToInt()) },
+                    ) { change, _ ->
+                        change.consume()
+                        val dx = change.position.x - size.width / 2f
+                        val dy = change.position.y - size.height / 2f
+                        val angle = Math.toDegrees(kotlin.math.atan2(dy, dx).toDouble())
+                        var m = ((angle + 360.0) % 360.0)
+                        if (m < 45.0) m += 360.0
+                        m = m.coerceIn(135.0, 405.0)
+                        local = (((m - 135.0) / 270.0) * 100.0).toFloat()
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val strokeW = 6.dp.toPx()
+                val radius = (size.minDimension - strokeW * 2f) / 2f
+                val center = Offset(size.width / 2f, size.height / 2f)
+                drawCircle(color = faceColor, radius = radius, center = center)
+                drawCircle(
+                    color = trackColor,
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = strokeW),
+                )
+                if (local > 0.5f) {
+                    drawArc(
+                        color = accentColor,
+                        startAngle = 135f,
+                        sweepAngle = 270f * local / 100f,
+                        useCenter = false,
+                        style = Stroke(width = strokeW, cap = StrokeCap.Round),
+                        topLeft = Offset(center.x - radius, center.y - radius),
+                        size = Size(radius * 2f, radius * 2f),
+                    )
+                }
+                val knobAngle = Math.toRadians(135.0 + 270.0 * local / 100.0)
+                drawLine(
+                    color = accentColor,
+                    start = center,
+                    end = Offset(
+                        center.x + radius * kotlin.math.cos(knobAngle).toFloat(),
+                        center.y + radius * kotlin.math.sin(knobAngle).toFloat(),
+                    ),
+                    strokeWidth = 4.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        Text(
+            "${local.roundToInt()}%",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** The friendly name of the output audio is playing through right now, Bluetooth first. */
+private fun currentOutputDeviceName(context: android.content.Context): String = try {
+    val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+    val outputs = audio.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+    val types = intArrayOf(
+        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        android.media.AudioDeviceInfo.TYPE_BLE_HEADSET,
+        android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+        android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+        android.media.AudioDeviceInfo.TYPE_USB_DEVICE,
+        android.media.AudioDeviceInfo.TYPE_USB_ACCESSORY,
+        android.media.AudioDeviceInfo.TYPE_LINE_OUT,
+    )
+    var found: String? = null
+    for (type in types) {
+        val device = outputs.firstOrNull { it.type == type } ?: continue
+        val name = device.productName?.toString()?.trim().orEmpty()
+        found = name.ifEmpty {
+            if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
+            ) {
+                "Bluetooth device"
+            } else {
+                "Wired output"
+            }
+        }
+        break
+    }
+    found ?: "Phone speaker"
+} catch (_: Exception) {
+    "Phone speaker"
 }
 
 /**

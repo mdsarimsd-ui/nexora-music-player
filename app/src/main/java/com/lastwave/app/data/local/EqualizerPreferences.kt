@@ -71,6 +71,19 @@ object EqualizerPresets {
         EqPreset("Folk", listOf(2.5f, 2.0f, 1.5f, 1.0f, 0.5f, 0f, 0.5f, 1.5f, 2.0f, 2.0f, 1.5f, 1.0f, 1.0f, 1.5f, 2.0f)),
         EqPreset("Heavy Metal", listOf(5.0f, 4.5f, 3.5f, 2.5f, 1.5f, 0.5f, -0.5f, -1.0f, -0.5f, 0.5f, 2.0f, 3.5f, 4.5f, 5.0f, 5.0f)),
         EqPreset("Hip Hop", listOf(7.0f, 6.5f, 5.5f, 4.0f, 2.5f, 1.0f, 0f, 0f, 0f, 0f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f)),
+        EqPreset("Bass and Treble", listOf(6.0f, 6.0f, 5.0f, 4.0f, 2.0f, 0.0f, -1.0f, -2.0f, -1.0f, 0.0f, 1.0f, 3.0f, 4.0f, 5.0f, 5.0f)),
+        EqPreset("Classic", listOf(4.0f, 4.0f, 3.0f, 2.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 2.0f, 2.0f, 3.0f, 3.0f)),
+        EqPreset("Full Bass", listOf(7.0f, 7.0f, 6.0f, 5.0f, 4.0f, 2.0f, 0.0f, -1.0f, -2.0f, -2.0f, -2.0f, -2.0f, -2.0f, -1.0f, -1.0f)),
+        EqPreset("Full Mids", listOf(-4.0f, -4.0f, -3.0f, -2.0f, -1.0f, 0.0f, 2.0f, 3.0f, 4.0f, 4.0f, 3.0f, 2.0f, 1.0f, 0.0f, -2.0f)),
+        EqPreset("Full Treble", listOf(-2.0f, -2.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 6.0f, 6.0f)),
+        EqPreset("Live", listOf(3.0f, 3.0f, 2.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 4.0f)),
+        EqPreset("No Bass", listOf(-8.0f, -8.0f, -7.0f, -6.0f, -4.0f, -2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)),
+        EqPreset("No Mids", listOf(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -4.0f, -6.0f, -8.0f, -8.0f, -6.0f, -4.0f, 0.0f, 0.0f, 0.0f, 0.0f)),
+        EqPreset("No Treble", listOf(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -2.0f, -4.0f, -6.0f, -8.0f, -8.0f)),
+        EqPreset("Reduced Bass", listOf(-4.0f, -4.0f, -3.0f, -2.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)),
+        EqPreset("Reduced Mids", listOf(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -2.0f, -3.0f, -4.0f, -4.0f, -3.0f, -2.0f, 0.0f, 0.0f, 0.0f, 0.0f)),
+        EqPreset("Reduced Treble", listOf(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, -2.0f, -3.0f, -4.0f, -4.0f)),
+        EqPreset("Speaker", listOf(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)),
     )
 
     fun byName(name: String): EqPreset? = ALL.firstOrNull { it.name.equals(name, ignoreCase = true) }

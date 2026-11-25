@@ -2140,6 +2140,7 @@ internal fun FullPlayer(
         )
     }
     if (showEqSheet) {
+        val loudnessState by eqViewModel.loudness.collectAsStateWithLifecycle()
         EqualizerSheet(
             eq = eq,
             onDismiss = { showEqSheet = false },
@@ -2151,6 +2152,8 @@ internal fun FullPlayer(
             onRenamePreset = eqViewModel::renameEqPreset,
             onDeletePreset = eqViewModel::deleteEqPreset,
             onSetBass = { enabled, strength -> eqViewModel.setBassBoost(enabled, strength) },
+            preampDb = loudnessState.preampDb,
+            onSetPreamp = eqViewModel::setLoudnessPreamp,
             onSetVirtualizer = { enabled, strength -> eqViewModel.setVirtualizer(enabled, strength) },
         )
     }

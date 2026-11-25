@@ -2714,6 +2714,7 @@ fun SettingsScreen(
 
     // -- Experimental 15-band equalizer --
     if (showEqSheet) {
+        val loudnessState by viewModel.loudness.collectAsStateWithLifecycle()
         EqualizerSheet(
             eq = eq,
             onDismiss = { showEqSheet = false },
@@ -2729,6 +2730,8 @@ fun SettingsScreen(
             onRenamePreset = viewModel::renameEqPreset,
             onDeletePreset = viewModel::deleteEqPreset,
             onSetBass = { enabled, strength -> viewModel.setBassBoost(enabled, strength) },
+            preampDb = loudnessState.preampDb,
+            onSetPreamp = viewModel::setLoudnessPreamp,
             onSetVirtualizer = { enabled, strength -> viewModel.setVirtualizer(enabled, strength) },
         )
     }

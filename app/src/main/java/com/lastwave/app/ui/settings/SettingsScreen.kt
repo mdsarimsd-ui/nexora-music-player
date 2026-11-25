@@ -2748,6 +2748,7 @@ fun SettingsScreen(
             onOpenAutoEq = {
                 showEqSheet = false
                 showAutoEq = true
+            }
             onSavePreset = viewModel::saveEqPreset,
             onRenamePreset = viewModel::renameEqPreset,
             onDeletePreset = viewModel::deleteEqPreset,

@@ -88,7 +88,7 @@ class AiAssistantRepository @Inject constructor(
                     PLAYLIST_SYSTEM_PROMPT,
                     prompt,
                 ).getOrThrow()
-                parseSuggestion(answer)
+                parseSuggestion(answer, libraryRefs())
             }
         }
 
@@ -163,7 +163,7 @@ class AiAssistantRepository @Inject constructor(
         }
     }
 
-    private fun parseSuggestion(answer: String): AiPlaylistSuggestion {
+    private fun parseSuggestion(answer: String, known: List<TrackRef>): AiPlaylistSuggestion {
         val cleaned = answer
             .replace("```json", "")
             .replace("```", "")
@@ -181,10 +181,6 @@ class AiAssistantRepository @Inject constructor(
         // saved playlist opens with correct artwork and metadata. Unmatched
         // suggestions keep their AI-provided names; the playlist pipeline
         // backfills their video ids from a YouTube search on first read.
-        val known = buildList {
-            addAll(stats.map { Triple(it.title, it.artist, null as String?) })
-            addAll(downloads.map { Triple(it.title, it.artist, it.album.ifBlank { null }) })
-        }.map { (t, a, al) -> TrackRef(t, a, al) }
         val tracks = dto.tracks.mapNotNull { dtoTrack ->
             if (dtoTrack.title.isBlank()) return@mapNotNull null
             val match = known.firstOrNull { ref ->
@@ -210,6 +206,19 @@ class AiAssistantRepository @Inject constructor(
             note = dto.note.trim(),
             tracks = tracks,
         )
+    }
+
+    private suspend fun libraryRefs(): List<TrackRef> {
+        val stats: List<SongPlayStatsEntity> = runCatching { songPlayStatsDao.getAll() }
+            .getOrDefault(emptyList())
+        val downloads: List<DownloadedTrackEntity> = runCatching { downloadedTrackDao.getAllList() }
+            .getOrDefault(emptyList())
+        return buildList {
+            for (s in stats) add(TrackRef(title = s.title, artist = s.artist, album = null))
+            for (d in downloads) {
+                add(TrackRef(title = d.title, artist = d.artist, album = d.album.takeIf { a -> a.isNotBlank() }))
+            }
+        }
     }
 
     private data class TrackRef(val title: String, val artist: String, val album: String?)

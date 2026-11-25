@@ -82,7 +82,7 @@ class GeminiClient @Inject constructor() {
                     ?.jsonObject?.get("content")?.jsonObject
                     ?.get("parts")?.jsonArray
                     ?.mapNotNull { part ->
-                        (part.jsonObject["text"] as? JsonPrimitive)?.contentOrNull
+                        (part.jsonObject["text"] as? JsonPrimitive)?.content
                     }
                     ?.joinToString("")
                     .orEmpty()

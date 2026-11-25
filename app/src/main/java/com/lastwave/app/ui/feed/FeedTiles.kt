@@ -284,6 +284,7 @@ internal fun QuickTilesLoadingSkeleton() {
 internal fun InfiniteRadioHero(
     quickPicks: List<YouTubeMusicTrack>,
     onPlay: () -> Unit,
+    onAskAi: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     val heroArt = quickPicks.firstOrNull { !it.artworkUrl.isNullOrBlank() }?.artworkUrl
@@ -403,6 +404,21 @@ internal fun InfiniteRadioHero(
                         Text(stringResource(R.string.feed_play_cd), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                 }
+                    if (onAskAi != null) {
+                        TextButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                onAskAi()
+                            },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                            modifier = Modifier.height(44.dp),
+                        ) {
+                            Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Ask AI", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        }
+                    }
             }
         }
     }

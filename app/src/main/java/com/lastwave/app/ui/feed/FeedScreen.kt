@@ -88,6 +88,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.layout.onSizeChanged
 import com.lastwave.app.ui.theme.liquidGlassSource
 import androidx.compose.material3.ModalBottomSheet
+import com.lastwave.app.ui.ai.AiAssistantSheet
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -247,6 +248,10 @@ fun FeedScreen(
     val listState = rememberLazyListState()
     var lastFeedTapMillis by remember { mutableLongStateOf(0L) }
     var isFeedTapRefreshing by remember { mutableStateOf(false) }
+    var showAiSheet by remember { mutableStateOf(false) }
+    if (showAiSheet) {
+        AiAssistantSheet(onDismiss = { showAiSheet = false })
+    }
 
     LaunchedEffect(state.isRefreshing) {
         if (!state.isRefreshing) {
@@ -881,6 +886,7 @@ fun FeedScreen(
                                     InfiniteRadioHero(
                                         quickPicks = currentQuickPicks,
                                         onPlay = viewModel::playInfiniteRadio,
+                                        onAskAi = { showAiSheet = true },
                                     )
                                 }
                             }
@@ -1646,6 +1652,7 @@ fun FeedScreen(
                 containerColor = if (isPodcastsActive) Color.Transparent else Color.Unspecified,
                 backdrop = if (useFeedGlass) feedBackdrop else null,
                 actions = {
+                    HeaderActionIcon(Icons.Filled.AutoAwesome, "AI Assistant") { showAiSheet = true }
                     HeaderActionIcon(Icons.Filled.Search, "Search", onOpenSearch)
                     IconButton(onClick = onOpenSettings) {
                         com.lastwave.app.ui.home.ProfileAvatar(avatarUrl = state.avatarUrl, modifier = Modifier.size(38.dp))

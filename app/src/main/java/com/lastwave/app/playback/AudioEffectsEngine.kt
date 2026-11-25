@@ -113,7 +113,8 @@ class AudioEffectsEngine @Inject constructor(
     private fun publishMusicoletEq(settings: EqualizerSettings) {
         val eqNative = com.lastwave.app.playback.eq.ParametricEqNative
         if (!eqNative.isAvailable) return
-        if (settings.enabled) musicoletEqEverOn = true
+        val chainOn = settings.enabled || settings.bassEnabled
+        if (chainOn) musicoletEqEverOn = true
         if (!settings.enabled && !musicoletEqEverOn) return
         val filters = buildList {
             EQ_BAND_FREQS_HZ.forEachIndexed { index, hz ->
@@ -146,7 +147,7 @@ class AudioEffectsEngine @Inject constructor(
         }
         val maxBoost = filters.maxOf { it.gainDb }
         val preamp = -(maxBoost * 0.4f).coerceIn(0f, 8f)
-        eqNative.publish(settings.enabled, preamp, filters)
+        eqNative.publish(chainOn, preamp, filters)
     }
 
     /** Follows ExoPlayer whenever Android creates or replaces its audio session. */

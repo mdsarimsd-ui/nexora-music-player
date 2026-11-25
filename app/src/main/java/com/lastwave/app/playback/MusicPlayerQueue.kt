@@ -369,10 +369,21 @@ internal fun MusicPlayer.resolveAndPlayQueueItem(index: Int) {
         // evicted): taking it over fails to start. Only a still-fresh
         // prepared stream counts as already resolved; anything else goes
         // through a fresh resolve, which re-resolves and swaps the URI in.
+        // Takeover reuses a baked stream only while its lifetime is explicit
+        // or its mint is recent. A URL whose expiry the provider never
+        // reported (or one minted long ago) re-resolves here instead, which
+        // is what playlist playback already does and why playlist-start
+        // worked while queue-start skipped. Global isExpired semantics are
+        // untouched (v5.6.1 regressed playback by expiring everywhere).
+        val preparedUsable = prepared != null && (
+            prepared.expiresAtEpochMs != null ||
+                prepared.youtubeCandidate?.expiresAtEpochMs != null ||
+                System.currentTimeMillis() - prepared.mintedAtEpochMs <= MusicPlayer.UNKNOWN_EXPIRY_STALE_MS
+            )
         val isAlreadyResolved = if (isLocal) {
             hasNonPlaceholderUri
         } else {
-            hasNonPlaceholderUri && !profileMismatch && prepared != null && !prepared.isExpired()
+            hasNonPlaceholderUri && !profileMismatch && preparedUsable && prepared?.isExpired() != true
         }
         if (preparedMatches && isAlreadyResolved) {
             // Already resolved: publish quality synchronously so the badge is

@@ -8922,15 +8922,9 @@ class MusicPlayer @Inject constructor(
         )
     }
 
-    internal fun ResolvedStream.isExpired(now: Long = System.currentTimeMillis()): Boolean {
-        expiresAtEpochMs?.let { return it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
-        youtubeCandidate?.expiresAtEpochMs?.let { return it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
-        // Unknown lifetime: trust the mint only briefly, then force a fresh
-        // resolve. A URL whose expiry could not be read used to be trusted
-        // forever, and queue takeover handed a silently dead URL to the
-        // player, which surfaced as mass auto-skips.
-        return now - mintedAtEpochMs > UNKNOWN_EXPIRY_STALE_MS
-    }
+    internal fun ResolvedStream.isExpired(now: Long = System.currentTimeMillis()): Boolean =
+        expiresAtEpochMs?.let { it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS }
+            ?: (youtubeCandidate?.expiresAtEpochMs?.let { it - now <= RESOLVED_URL_EXPIRY_MARGIN_MS } == true)
 
     /** Addon media URLs carry `exp` (ms epoch; far-future = never expires).
      *  Tolerates s-epoch in case a proxy ever rewrites the param. */

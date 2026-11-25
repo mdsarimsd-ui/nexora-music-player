@@ -13,6 +13,7 @@ import com.lastwave.app.data.autoeq.AutoEqTarget
 import com.lastwave.app.data.autoeq.OutputDevice
 import com.lastwave.app.data.autoeq.ParametricEqText
 import com.lastwave.app.data.autoeq.PeqFilter
+import com.lastwave.app.data.autoeq.PeqPreset
 import com.lastwave.app.data.autoeq.PeqFilterType
 import com.lastwave.app.data.autoeq.PeqMath
 import com.lastwave.app.data.autoeq.PeqSettings

@@ -2748,7 +2748,7 @@ fun SettingsScreen(
             onOpenAutoEq = {
                 showEqSheet = false
                 showAutoEq = true
-            }
+            },
             onSetBass = { enabled, strength -> viewModel.setBassBoost(enabled, strength) },
             preampDb = loudnessState.preampDb,
             onSetPreamp = viewModel::setLoudnessPreamp,

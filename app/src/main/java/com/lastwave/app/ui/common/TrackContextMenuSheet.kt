@@ -793,7 +793,7 @@ private fun ColumnScope.RedesignedTrackMenuContent(
                         }
                     }
                     add {
-                        MenuActionRow(Icons.AutoMirrored.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), enabled = !dismissing) {
+                        MenuActionRow(Icons.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), enabled = !dismissing) {
                             musicPlayer.playNext(playable)
                             dismissMenu()
                         }
@@ -1121,7 +1121,7 @@ private fun ColumnScope.ClassicTrackMenuContent(
                     }
                 }
                 add { pos ->
-                    ClassicMenuActionRow(Icons.AutoMirrored.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), position = pos, enabled = !dismissing) {
+                    ClassicMenuActionRow(Icons.Outlined.PlaylistAdd, stringResource(R.string.menu_play_next), position = pos, enabled = !dismissing) {
                         musicPlayer.playNext(playable)
                         dismissMenu()
                     }

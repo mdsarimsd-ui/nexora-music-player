@@ -5821,8 +5821,7 @@ class MusicPlayer @Inject constructor(
         // file made playback feel broken. Skip past the file and keep the
         // music going. Streams keep the hold: their failures are usually
         // transient network blips worth a manual retry.
-        val isFailedLocalFile = failedMediaId?.startsWith("local:") == true ||
-            currentTrack?.isLocalTrack() == true
+        val isFailedLocalFile = failedMediaId?.startsWith("local:") == true
         if (!exhausted && !provenDead && !alreadyRetriedExhaustively &&
             attempts < MIN_UNAVAILABLE_ATTEMPTS_BEFORE_SKIP && !isFailedLocalFile
         ) {

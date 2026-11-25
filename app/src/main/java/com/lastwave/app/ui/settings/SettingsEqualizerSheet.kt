@@ -65,10 +65,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -762,7 +759,7 @@ internal fun EqualizerSheet(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             androidx.compose.material3.Icon(
-                                androidx.compose.material.icons.Icons.Filled.ArrowDropDown,
+                                Icons.Filled.KeyboardArrowDown,
                                 contentDescription = null,
                             )
                         }
@@ -937,8 +934,6 @@ internal fun EqualizerSheet(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             )
-,
-            )
         }
     }
 }
@@ -971,7 +966,7 @@ private fun EqKnob(
                         },
                         onDragEnd = { onValueChange(local.roundToInt()) },
                         onDragCancel = { onValueChange(local.roundToInt()) },
-                    ) { change, _ ->
+                        onDragUpdate = { change, _ ->
                         change.consume()
                         val dx = change.position.x - size.width / 2f
                         val dy = change.position.y - size.height / 2f
@@ -980,7 +975,8 @@ private fun EqKnob(
                         if (m < 45.0) m += 360.0
                         m = m.coerceIn(135.0, 405.0)
                         local = (((m - 135.0) / 270.0) * 100.0).toFloat()
-                    }
+                        },
+                    )
                 },
             contentAlignment = Alignment.Center,
         ) {
@@ -1041,7 +1037,6 @@ private fun currentOutputDeviceName(context: android.content.Context): String = 
         android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
         android.media.AudioDeviceInfo.TYPE_USB_DEVICE,
         android.media.AudioDeviceInfo.TYPE_USB_ACCESSORY,
-        android.media.AudioDeviceInfo.TYPE_LINE_OUT,
     )
     var found: String? = null
     for (type in types) {

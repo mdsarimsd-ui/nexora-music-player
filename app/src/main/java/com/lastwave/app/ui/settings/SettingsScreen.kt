@@ -2749,9 +2749,6 @@ fun SettingsScreen(
                 showEqSheet = false
                 showAutoEq = true
             }
-            onSavePreset = viewModel::saveEqPreset,
-            onRenamePreset = viewModel::renameEqPreset,
-            onDeletePreset = viewModel::deleteEqPreset,
             onSetBass = { enabled, strength -> viewModel.setBassBoost(enabled, strength) },
             preampDb = loudnessState.preampDb,
             onSetPreamp = viewModel::setLoudnessPreamp,

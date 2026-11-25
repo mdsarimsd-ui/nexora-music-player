@@ -99,6 +99,18 @@ class NativeProcessingAudioSink(
     @Volatile private var processingActive = false
     private var floatOutputDisabled = false
     private var nativePathDisabled = false
+    /**
+     * One-shot rescue request: the next configure uses the plain platform PCM
+     * path (no DSP) for that track, then the flag clears. The player asks for
+     * this when a track keeps failing on the enhanced path, so one stubborn
+     * format cannot eat the enhanced output for every other song.
+     */
+    @Volatile private var plainOutputOnce = false
+
+    /** Skips the enhanced DSP path for the next track configure, then re-enables it. */
+    fun requestPlainOutputOnce() {
+        plainOutputOnce = true
+    }
     private var playing = false
     @Volatile private var bitPerfectRequested = false
     // Generation tracking so the verdict can separate bitPerfectRequested
@@ -368,7 +380,9 @@ class NativeProcessingAudioSink(
             bitPerfectAtConfigure = false
         }
 
-        if (!nativePathDisabled && processor.isAvailable && canProcess(format) &&
+        val plainRequested = plainOutputOnce
+        plainOutputOnce = false
+        if (!plainRequested && !nativePathDisabled && processor.isAvailable && canProcess(format) &&
             tryConfigureNativePath(format, outputChannels)
         ) {
             return

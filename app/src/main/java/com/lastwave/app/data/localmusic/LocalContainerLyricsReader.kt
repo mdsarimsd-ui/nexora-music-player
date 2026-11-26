@@ -44,11 +44,9 @@ object LocalContainerLyricsReader {
                         runCatching { java.net.URLDecoder.decode(raw, "UTF-8") }.getOrNull(),
                         raw.replace("%20", " "),
                         raw.replace(" ", "%20"),
-                    ).filterNotNull().distinct().forEach { path ->
-                        val f = File(path)
-                        if (f.isFile && f.canRead()) return@runCatching f.inputStream()
+                    ).filterNotNull().distinct().firstNotNullOfOrNull { path ->
+                        File(path).takeIf { it.isFile && it.canRead() }?.inputStream()
                     }
-                    null
                 }
             }
             openStream()?.use { raw ->

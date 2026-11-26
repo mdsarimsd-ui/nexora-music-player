@@ -44,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -79,9 +80,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lastwave.app.data.ai.AiPlaylistSuggestion
-import com.lastwave.app.ui.theme.LiquidGlassSurface
-import com.lastwave.app.ui.theme.LocalLiquidGlass
-import com.lastwave.app.ui.theme.liquidGlassChrome
 
 /**
  * The AI assistant surface, redesigned as a chat: full-width assistant
@@ -205,14 +203,10 @@ fun AiAssistantSheet(
         scrimColor = Color.Transparent,
         dragHandle = null,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         // Floating Gemini-style card: hovered above the bottom edge, glass all around.
-        LiquidGlassSurface(
-            onClick = {},
-            glassModifier = Modifier.liquidGlassChrome(
-                RoundedCornerShape(28.dp),
-                LocalLiquidGlass.current,
-            ),
+        Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f),
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -316,7 +310,8 @@ fun AiAssistantSheet(
 
             if (!settingsReady) {
                 Spacer(Modifier.height(24.dp))
-            } else if (settings.apiKey.isBlank() || settingsOpen) {
+            } else {
+                if (settings.apiKey.isBlank() || settingsOpen) {
                 // Setup stays one line away: masked key, never readable again.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("AI Assistant", modifier = Modifier.weight(1f))
@@ -535,6 +530,7 @@ fun AiAssistantSheet(
                         Icon(Icons.Filled.Send, contentDescription = "Send")
                     }
                 }
+            }
             }
         }
         }

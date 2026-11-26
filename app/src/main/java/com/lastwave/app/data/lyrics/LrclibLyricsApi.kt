@@ -50,45 +50,97 @@ class LrclibLyricsApi @Inject constructor(
         durationSeconds: Int? = null,
     ): LrclibRecord? = withContext(Dispatchers.IO) {
         if (title.isBlank()) return@withContext null
+
+        // A plain-text hit is kept only as a floor: an exact match with no
+        // timestamps must not stop the search for a synced version of the
+        // same song, which /api/search prefers on its own.
+        var plainFallback: LrclibRecord? = null
+
         // Local files often carry a song name and no artist at all. /api/get
         // requires both, so go straight to a title-only search instead of
         // silently returning nothing for every local song without tags.
         if (artist.isBlank()) {
-            return@withContext searchLyrics(title, "", durationSeconds, rawTitle = title)
-        }
+            searchLyrics(title, "", durationSeconds, rawTitle = title)?.let { hit ->
+                if (!hit.syncedLyrics.isNullOrBlank()) return@withContext hit
+                plainFallback = hit
+            }
+        } else {
+            // 1. Exact matches, strictest first so a correct album/duration still
+            // pins the right version (studio vs live/remix).
+            val exactAttempts = listOf(
+                Triple(title, artist, Pair(album, durationSeconds)),
+                Triple(title, artist, Pair(null, durationSeconds)),
+                Triple(title, artist, Pair(null, null)),
+            )
+            for ((t, a, params) in exactAttempts) {
+                val exact = getLyricsExact(t, a, params.first, params.second) ?: continue
+                if (!exact.syncedLyrics.isNullOrBlank()) return@withContext exact
+                if (!exact.plainLyrics.isNullOrBlank() || exact.instrumental == true) {
+                    if (plainFallback == null) plainFallback = exact
+                }
+            }
 
-        // 1. Exact matches, strictest first so a correct album/duration still
-        // pins the right version (studio vs live/remix).
-        val exactAttempts = listOf(
-            Triple(title, artist, Pair(album, durationSeconds)),
-            Triple(title, artist, Pair(null, durationSeconds)),
-            Triple(title, artist, Pair(null, null)),
-        )
-        for ((t, a, params) in exactAttempts) {
-            val exact = getLyricsExact(t, a, params.first, params.second)
-            if (exact != null && (!exact.syncedLyrics.isNullOrBlank() || !exact.plainLyrics.isNullOrBlank() || exact.instrumental == true)) {
-                return@withContext exact
+            // 2. Clean title (strip "(feat. ...)", "- Extended", "[Official Video]", etc.) and retry exact
+            val cleanedTitle = cleanTrackTitle(title)
+            val cleanedArtist = cleanArtistName(artist)
+            if (cleanedTitle != title || cleanedArtist != artist) {
+                for (params in listOf(Pair(album, durationSeconds), Pair(null, durationSeconds), Pair(null, null))) {
+                    val cleanedExact = getLyricsExact(cleanedTitle, cleanedArtist, params.first, params.second) ?: continue
+                    if (!cleanedExact.syncedLyrics.isNullOrBlank()) return@withContext cleanedExact
+                    if ((!cleanedExact.plainLyrics.isNullOrBlank() || cleanedExact.instrumental == true) && plainFallback == null) {
+                        plainFallback = cleanedExact
+                    }
+                }
+            }
+
+            // 3. Fallback to /api/search query with tiered duration tolerance.
+            // Raw title is passed for version-tag comparison (cleaning strips
+            // "(Live)"/"(Remix)" markers that distinguish recordings).
+            val searched = searchLyrics(cleanedTitle, cleanedArtist, durationSeconds, rawTitle = title)
+                ?: searchLyrics(title, artist, durationSeconds, rawTitle = title)
+            if (searched != null) {
+                if (!searched.syncedLyrics.isNullOrBlank()) return@withContext searched
+                if (plainFallback == null) plainFallback = searched
             }
         }
 
-        // 2. Clean title (strip "(feat. ...)", "- Extended", "[Official Video]", etc.) and retry exact
-        val cleanedTitle = cleanTrackTitle(title)
-        val cleanedArtist = cleanArtistName(artist)
-        if (cleanedTitle != title || cleanedArtist != artist) {
-            for (params in listOf(Pair(album, durationSeconds), Pair(null, durationSeconds), Pair(null, null))) {
-                val cleanedExact = getLyricsExact(cleanedTitle, cleanedArtist, params.first, params.second)
-                if (cleanedExact != null && (!cleanedExact.syncedLyrics.isNullOrBlank() || !cleanedExact.plainLyrics.isNullOrBlank() || cleanedExact.instrumental == true)) {
-                    return@withContext cleanedExact
+        // 4. Mashup / medley / multi-part titles ("A Mashup | B | C"): LRCLIB
+        // stores the underlying songs, never the mashup, so each part is
+        // tried on its own. Segments search title-only (the mashup channel
+        // is never the recording artist) and without a duration gate (parts
+        // are shorter than the mashup file).
+        for (segment in splitMashupTitle(title)) {
+            searchLyrics(segment, "", null, rawTitle = segment)?.let { seg ->
+                if (!seg.syncedLyrics.isNullOrBlank() || !seg.plainLyrics.isNullOrBlank() || seg.instrumental == true) {
+                    return@withContext seg
                 }
             }
         }
 
-        // 3. Fallback to /api/search query with tiered duration tolerance.
-        // Raw title is passed for version-tag comparison (cleaning strips
-        // "(Live)"/"(Remix)" markers that distinguish recordings).
-        searchLyrics(cleanedTitle, cleanedArtist, durationSeconds, rawTitle = title)
-            ?: searchLyrics(title, artist, durationSeconds, rawTitle = title)
+        plainFallback
     }
+
+    /**
+     * Splits a mashup-style title into its song parts: separators (|, //,
+     * x, ;) break it up, mashup/medley/slowed markers are stripped, and
+     * trailing ellipses ("Ke Sad...") are dropped so real song titles
+     * survive.
+     */
+    private fun splitMashupTitle(title: String): List<String> = title
+        .split(Regex("\\s*(?://|\\||\u00d7|;)\\s*"))
+        .asSequence()
+        .map { part ->
+            part.replace(
+                Regex("(?i)\b(mashup|megamix|mixtape|medley|mix|cover|jukebox|slowed\s*\+?\s*reverb|slowed\s*and\s*reverb|slowed|reverb|lo-?fi|8d\s*audio|8d|16d\s*audio|16d)\b"),
+                " ",
+            )
+                .replace(Regex("[\u00b7\u2022\u2013\u2014-]+\s*$"), "")
+                .replace(Regex("\s*\.{2,}|\u2026"), "")
+                .trim(' ', '-', '.', ',')
+        }
+        .filter { it.length >= 3 && !it.equals(title.trim(), ignoreCase = true) }
+        .distinct()
+        .toList()
 
     private fun getLyricsExact(
         title: String,

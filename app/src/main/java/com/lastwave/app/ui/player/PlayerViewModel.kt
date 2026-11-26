@@ -393,39 +393,28 @@ class PlayerViewModel @Inject constructor(
     private var customPlaylistsLoaded = false
     val likedTrackKeys = trackLikeController.likedTrackKeys
 
-    // 8D / 16D per-song spatialization: the mode follows the song, stored in
-    // DataStore per stable track key and pushed onto every audio sink.
-    private val spatialTrackKey = MutableStateFlow<String?>(null)
+    // 8D / 16D global spatialization: one mode for every song. It is stored
+    // once, not per song, and stays engaged until the listener turns it off.
     private val _spatialization = MutableStateFlow(com.lastwave.app.playback.SpatializationMode.OFF)
     val spatialization: StateFlow<com.lastwave.app.playback.SpatializationMode> = _spatialization.asStateFlow()
 
+    /** DataStore key the single global 8D / 16D mode is saved under. */
+    private val globalSpatialKey = "global"
+
     init {
         viewModelScope.launch {
-            player.state
-                .map { it.current?.spatialKey() }
-                .distinctUntilChanged()
-                .collect { key ->
-                    spatialTrackKey.value = key
-                    val mode = key
-                        ?.let { spatializerPreferences.modeFor(it).first() }
-                        ?: com.lastwave.app.playback.SpatializationMode.OFF
-                    _spatialization.value = mode
-                    player.setSpatializationMode(mode)
-                }
+            val mode = spatializerPreferences.modeFor(globalSpatialKey).first()
+            _spatialization.value = mode
+            player.setSpatializationMode(mode)
         }
     }
 
-    /** Applies the now-playing toggle: session effect now, saved for this song. */
+    /** Applies the now-playing toggle: session effect now, saved globally. */
     fun setSpatialization(mode: com.lastwave.app.playback.SpatializationMode) {
         _spatialization.value = mode
         player.setSpatializationMode(mode)
-        spatialTrackKey.value?.let { key ->
-            viewModelScope.launch { spatializerPreferences.setMode(key, mode) }
-        }
+        viewModelScope.launch { spatializerPreferences.setMode(globalSpatialKey, mode) }
     }
-
-    private fun com.lastwave.app.playback.PlayableTrack.spatialKey(): String? =
-        internalTrackId ?: videoId ?: playbackUrl?.let { "url:$it" }
 
     // Account controls project the same state as the heart. A second status read
     // could arrive after a tap and make the next request perform the opposite action.

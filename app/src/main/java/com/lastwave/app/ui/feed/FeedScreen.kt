@@ -182,6 +182,7 @@ import com.lastwave.app.ui.podcast.PodcastShowRow
 import com.lastwave.app.data.feed.TrendingInstagramEntry
 import androidx.compose.ui.draw.clip
 import com.lastwave.app.data.feed.SongRows
+import androidx.compose.ui.draw.shadow
 
 private fun LazyListScope.feedSectionItem(
     key: Any,
@@ -248,6 +249,7 @@ fun FeedScreen(
     val allTimeHits by viewModel.allTimeHits.collectAsStateWithLifecycle()
     val instagramTrending by viewModel.instagramTrending.collectAsStateWithLifecycle()
     val songRows by viewModel.songRows.collectAsStateWithLifecycle()
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
     fun isSectionVisible(section: HomeSection) = section.id !in hiddenSections
     val snackbarHostState = remember { SnackbarHostState() }
     val hasFeedContent = state.isChipActive || state.feedData.hasContent
@@ -657,6 +659,7 @@ fun FeedScreen(
                     individualTopArtists, state.feedData.heavyRotation, state.feedData.recentAlbums,
                     state.feedData.charts, combinedNewReleases, state.feedData.friends,
                     remainingNativeShelves, resolveNativeShelf, state.feedData.spotlight, songRows,
+                    savedPlaylists,
                 ) {
                     if (state.isChipActive) return@remember emptyList<String>() to emptyMap<String, HomeShelf>()
 
@@ -665,9 +668,9 @@ fun FeedScreen(
                     fun ytShelf(key: String): HomeShelf? =
                         if (key in ytResolved) ytResolved[key] else resolveNativeShelf(key).also { ytResolved[key] = it }
 
-                    // Home rebuild: song-only rows, Hindi and English, many of them.
+                    // Home rebuild: quick access first, then song-only rows, Hindi and English.
                     val allCandidateKeys = listOf(
-                        "trending_instagram", "trending_songs", "row:hindi", "row:english",
+                        "your_playlists", "trending_instagram", "trending_songs", "row:hindi", "row:english",
                         "global_hits", "row:punjabi", "row:party", "row:romantic",
                         "all_time_hits", "row:90s", "row:sad",
                     )
@@ -690,8 +693,11 @@ fun FeedScreen(
                     val (pinned, unpinned) = sorted.partition { it in pinnedHomeSections }
                     val ordered = pinned + unpinned
                     val available = ordered.filter { key ->
-                        if (key.startsWith("row:")) songRows[key.removePrefix("row:")].orEmpty().isNotEmpty()
-                        else true
+                        when {
+                            key == "your_playlists" -> savedPlaylists.isNotEmpty()
+                            key.startsWith("row:") -> songRows[key.removePrefix("row:")].orEmpty().isNotEmpty()
+                            else -> true
+                        }
                     }
 
                     // Two keys can point at the same shelf (old saved key vs live title,
@@ -1386,6 +1392,7 @@ fun FeedScreen(
                                     val rowTracks = songRows[rowId].orEmpty()
                                     if (rowDef != null && rowTracks.isNotEmpty()) {
                                         feedSectionItem(key = sectionKey, contentType = sectionKey) {
+                                            LaunchedEffect(rowTracks) { viewModel.warmQuickPicks(rowTracks.take(2)) }
                                             HomeContainerSection(shape = getContainerShape(rowId)) {
                                                 FeedSectionHeader(
                                                     title = rowDef.title,
@@ -1408,6 +1415,38 @@ fun FeedScreen(
                                                             onPlayClick = { viewModel.playTrack(track, rowDef.title) },
                                                         )
                                                     }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                sectionKey == "your_playlists" -> {
+                                    feedSectionItem(key = "your_playlists", contentType = "your_playlists") {
+                                        HomeContainerSection(shape = getContainerShape("your_playlists")) {
+                                            FeedSectionHeader(
+                                                title = "Your Playlists",
+                                                subtitle = "Tap to play straight away",
+                                            )
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(top = 12.dp),
+                                            ) {
+                                                itemsIndexed(savedPlaylists) { _, playlist ->
+                                                    FeedMediaCard(
+                                                        title = playlist.title,
+                                                        subtitle = if (playlist.remoteTrackCount != null && playlist.tracks.isEmpty()) {
+                                                            "${playlist.remoteTrackCount} songs"
+                                                        } else {
+                                                            "${playlist.tracks.size} songs"
+                                                        },
+                                                        artworkUrl = playlist.customCoverUri
+                                                            ?: playlist.tracks.firstOrNull()?.artworkUrl
+                                                            ?: playlist.remoteArtworkUrl,
+                                                        fallbackIcon = Icons.AutoMirrored.Filled.QueueMusic,
+                                                        onClick = { viewModel.playSavedPlaylist(playlist) },
+                                                        onPlayClick = { viewModel.playSavedPlaylist(playlist) },
+                                                    )
                                                 }
                                             }
                                         }
@@ -1443,6 +1482,7 @@ fun FeedScreen(
                                     feedSectionItem(key = "trending_songs", contentType = "trending_songs") {
                                         val trendingSongs = state.feedData.charts.take(25)
                                             .ifEmpty { songRows["trending"].orEmpty() }
+                                        LaunchedEffect(trendingSongs) { viewModel.warmQuickPicks(trendingSongs.take(2)) }
                                         HomeContainerSection(
                                             shape = getContainerShape("trending_songs"),
                                         ) {
@@ -1784,6 +1824,33 @@ fun FeedScreen(
                 }
             }
         }
+
+            // Floating AI mascot: always a tap away from home.
+            if (!showAiSheet) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = 116.dp)
+                        .size(62.dp)
+                        .shadow(elevation = 12.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF7C4DFF), Color(0xFF00E5CC)),
+                            ),
+                        )
+                        .border(2.dp, Color.White.copy(alpha = 0.28f), CircleShape)
+                        .clickable { showAiSheet = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = "AI Assistant",
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
 
             // Glass header on top of the feed, with the pinned YTM chip row
             // under it in its original opaque style (not part of the glass).

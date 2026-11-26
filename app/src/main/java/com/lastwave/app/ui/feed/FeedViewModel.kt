@@ -47,6 +47,7 @@ import javax.inject.Inject
 import com.lastwave.app.data.feed.InstagramTrending
 import com.lastwave.app.data.feed.TrendingInstagramEntry
 import com.lastwave.app.data.feed.SongRows
+import com.lastwave.app.data.playlist.SavedPlaylist
 
 @Immutable
 data class FeedUiState(
@@ -94,10 +95,20 @@ class FeedViewModel @Inject constructor(
     private val discoverRepository: com.lastwave.app.data.discover.DiscoverRepository,
     private val genresRepository: com.lastwave.app.data.generate.GenresRepository,
     private val previewQueueRepository: com.lastwave.app.data.queue.PreviewQueueRepository? = null,
+    private val playlistRepository: com.lastwave.app.data.playlist.PlaylistRepository,
 ) : ViewModel() {
 
     val previewQueues: StateFlow<List<com.lastwave.app.data.queue.PreviewQueue>> =
         previewQueueRepository?.previewQueues ?: MutableStateFlow(emptyList())
+
+    /** Quick access: one tap plays a saved playlist, local tracks first. */
+    fun playSavedPlaylist(playlist: SavedPlaylist) {
+        if (playlist.tracks.isNotEmpty()) {
+            musicPlayer.playQueue(playlist.tracks.map { it.toPlayableTrack() }, 0, sourceLabel = playlist.title)
+        } else if (playlist.remotePlaylistId != null) {
+            playPlaylistById(playlist.remotePlaylistId, playlist.title)
+        }
+    }
 
     fun playPreviewQueue(queue: com.lastwave.app.data.queue.PreviewQueue) {
         musicPlayer.playQueue(queue.tracks, 0, sourceLabel = queue.title)
@@ -124,6 +135,9 @@ class FeedViewModel @Inject constructor(
 
     private val _allTimeHits = MutableStateFlow<List<YouTubeMusicTrack>>(emptyList())
     val allTimeHits: StateFlow<List<YouTubeMusicTrack>> = _allTimeHits.asStateFlow()
+
+    val savedPlaylists: StateFlow<List<SavedPlaylist>> = playlistRepository.playlists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _songRows = MutableStateFlow<Map<String, List<YouTubeMusicTrack>>>(emptyMap())
     val songRows: StateFlow<Map<String, List<YouTubeMusicTrack>>> = _songRows.asStateFlow()

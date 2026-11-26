@@ -130,11 +130,16 @@ void ParametricEq::configure(double sampleRate, std::int32_t channels) noexcept 
     appliedRevision_ = 0xFFFFFFFFU;
     reset();
     syncConfiguration();
+    // About 20 ms glide between coefficient sets at any sample rate.
+    coefficientFadeTotal_ = static_cast<std::int32_t>(0.02 * sampleRate_);
+    coefficientFadeTotal_ = std::clamp(coefficientFadeTotal_, 64, 4800);
+    smoothPreampGain_ = preampGain_;
 }
 
 void ParametricEq::reset() noexcept {
     for (auto& state : z1_) state.fill(0.0);
     for (auto& state : z2_) state.fill(0.0);
+    coefficientFadeRemaining_.fill(0);
     limiterEnv_.fill(0.0F);
     limiterGain_.fill(1.0F);
 }
@@ -173,6 +178,14 @@ void ParametricEq::syncConfiguration() noexcept {
             z1_[active].fill(0.0);
             z2_[active].fill(0.0);
             slotSource_[active] = static_cast<std::int32_t>(i);
+        }
+        const Coefficients& previous = coefficients_[active];
+        if (coefficientFadeRemaining_[active] > 0 ||
+            std::abs(previous.b0 - next.b0) > 1.0e-9 || std::abs(previous.b1 - next.b1) > 1.0e-9 ||
+            std::abs(previous.b2 - next.b2) > 1.0e-9 || std::abs(previous.a1 - next.a1) > 1.0e-9 ||
+            std::abs(previous.a2 - next.a2) > 1.0e-9) {
+            prevCoefficients_[active] = previous;
+            coefficientFadeRemaining_[active] = coefficientFadeTotal_;
         }
         coefficients_[active++] = next;
     }

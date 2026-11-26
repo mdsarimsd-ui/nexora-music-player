@@ -52,6 +52,12 @@ class SpatializationStage {
     /** Head-shadow low-pass state for the panned core (see process()). */
     private var shadowState = 0f
 
+    /** Bass-preserving split: one-pole low-pass of the mono core at ~150 Hz.
+     *  The low band stays centered (no pan, no reverb) so bass keeps its
+     *  punch and direction while the mids/highs rotate around the head. */
+    private var bassSplitState = 0f
+    private var bassSplitAlpha = 0f
+
     /** Mono ring buffer feeding the per-ear interaural delays. */
     private var itdBuf = FloatArray(0)
     private var itdIdx = 0
@@ -85,6 +91,9 @@ class SpatializationStage {
         // Max interaural time difference of 0.6 ms: the physical limit of
         // ear-to-ear arrival delay a real head produces.
         itdMaxSamples = (0.0006 * sampleRateHz).toInt().coerceIn(8, 96)
+        // One-pole crossover at ~150 Hz between the centered bass and the
+        // rotating mid/high band.
+        bassSplitAlpha = (1.0 - kotlin.math.exp(-2.0 * PI * 150.0 / sampleRateHz)).toFloat()
         itdBuf = FloatArray(itdMaxSamples + 1)
         itdIdx = 0
         java.util.Arrays.fill(itdBuf, 0f)
@@ -123,6 +132,7 @@ class SpatializationStage {
             panRad = 0.0
             alternationPhase = 0.0
             shadowState = 0f
+            bassSplitState = 0f
             itdIdx = 0
             if (itdBuf.isNotEmpty()) java.util.Arrays.fill(itdBuf, 0f)
             if (mode != SpatializationMode.OFF) pendingEngageRamp = true
@@ -149,7 +159,13 @@ class SpatializationStage {
                 val l = output.getFloat(pos)
                 val r = output.getFloat(pos + Float.SIZE_BYTES)
                 val mono = (l + r) * 0.5f
-                val wet = reverb(mono)
+                // Bass-preserving split: lows stay centered so the kick and
+                // bass line never wobble around the head (that was what made
+                // 8D / 16D feel muddy); only the mids and highs rotate.
+                bassSplitState += bassSplitAlpha * (mono - bassSplitState)
+                val monoLow = bassSplitState
+                val monoHigh = mono - monoLow
+                val wet = reverb(monoHigh)
                 val gL: Float
                 val gR: Float
                 // Position along the left-right axis (-1 far left .. +1 far
@@ -188,7 +204,7 @@ class SpatializationStage {
                 // behind you. Applied before the ring write so both ears
                 // share one shadow state and the overall energy stays put.
                 val shadowAlpha = (1.0 - 0.72 * behindness).toFloat()
-                shadowState += shadowAlpha * (mono - shadowState)
+                shadowState += shadowAlpha * (monoHigh - shadowState)
 
                 // Interaural time difference: the ear on the far side of the
                 // swing hears the panned core up to 0.6 ms later, the exact
@@ -209,8 +225,8 @@ class SpatializationStage {
 
                 val dry = 0.35f
                 val wetMix = 0.30f
-                val outL = ((l * dry + coreL + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
-                val outR = ((r * dry + coreR + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
+                val outL = ((l * dry + coreL + monoLow * BASS_KEEP + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
+                val outR = ((r * dry + coreR + monoLow * BASS_KEEP + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 // Fade the whole effect in over the engage ramp: ramp 0 is
                 // plain passthrough, 1 is the full 8D / 16D mix above.
                 val ramp = if (engageRampFrames > 0) {
@@ -232,6 +248,7 @@ class SpatializationStage {
         panRad = 0.0
         alternationPhase = 0.0
         shadowState = 0f
+        bassSplitState = 0f
         engageRampFrames = 0
         engageRampTotal = 0
         pendingEngageRamp = false
@@ -245,5 +262,7 @@ class SpatializationStage {
 
     private companion object {
         const val TAU = 2.0 * PI
+        /** Per-ear gain of the centered bass band (matches the pan core's average level). */
+        const val BASS_KEEP = 0.75f
     }
 }

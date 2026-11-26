@@ -114,15 +114,40 @@ private:
     inline float tick(float input, std::size_t channel) noexcept {
         double value = static_cast<double>(input);
         for (std::size_t i = 0; i < activeCount_; ++i) {
-            const Coefficients& c = coefficients_[i];
+            const Coefficients* c = &coefficients_[i];
+            Coefficients blended;
+            if (coefficientFadeRemaining_[i] > 0) {
+                // A filter just changed: glide from the previous
+                // coefficients to the new ones over about 20 ms (linear in
+                // coefficient space, both ends stable biquads). Band edits,
+                // preset switches and Q changes fade instead of clicking,
+                // and the shared filter state keeps running through it.
+                const double t =
+                    static_cast<double>(coefficientFadeTotal_ - coefficientFadeRemaining_[i]) /
+                    static_cast<double>(coefficientFadeTotal_);
+                blended.b0 = prevCoefficients_[i].b0 + (coefficients_[i].b0 - prevCoefficients_[i].b0) * t;
+                blended.b1 = prevCoefficients_[i].b1 + (coefficients_[i].b1 - prevCoefficients_[i].b1) * t;
+                blended.b2 = prevCoefficients_[i].b2 + (coefficients_[i].b2 - prevCoefficients_[i].b2) * t;
+                blended.a1 = prevCoefficients_[i].a1 + (coefficients_[i].a1 - prevCoefficients_[i].a1) * t;
+                blended.a2 = prevCoefficients_[i].a2 + (coefficients_[i].a2 - prevCoefficients_[i].a2) * t;
+                c = &blended;
+                // Counted once per frame (channel 0) so the fade length is
+                // in frames, not samples, whatever the channel count.
+                if (channel == 0) --coefficientFadeRemaining_[i];
+            }
+            const Coefficients& cf = *c;
             double& z1 = z1_[i][channel];
             double& z2 = z2_[i][channel];
-            const double out = c.b0 * value + z1;
-            z1 = c.b1 * value - c.a1 * out + z2;
-            z2 = c.b2 * value - c.a2 * out;
+            const double out = cf.b0 * value + z1;
+            z1 = cf.b1 * value - cf.a1 * out + z2;
+            z2 = cf.b2 * value - cf.a2 * out;
             value = out;
         }
-        return static_cast<float>(value * preampGain_);
+        // Preamp glides toward its target (one-pole, about 25 ms) so
+        // preamp edits never step either.
+        smoothPreampGain_ += 0.0008 * (preampGain_ - smoothPreampGain_);
+        if (std::abs(preampGain_ - smoothPreampGain_) < 1.0e-9) smoothPreampGain_ = preampGain_;
+        return static_cast<float>(value * smoothPreampGain_);
     }
 
     /**
@@ -156,6 +181,12 @@ private:
     double preampGain_{1.0};
     std::size_t activeCount_{0};
     std::array<Coefficients, kMaxFilters> coefficients_{};
+    // Click-free editing: previous coefficients and fade countdown for each
+    // slot while tick() glides between them (see tick).
+    std::array<Coefficients, kMaxFilters> prevCoefficients_{};
+    std::array<std::int32_t, kMaxFilters> coefficientFadeRemaining_{};
+    std::int32_t coefficientFadeTotal_{960};
+    double smoothPreampGain_{1.0};
     std::array<std::array<double, kMaxChannels>, kMaxFilters> z1_{};
     std::array<std::array<double, kMaxChannels>, kMaxFilters> z2_{};
     std::array<std::int32_t, kMaxFilters> slotSource_{

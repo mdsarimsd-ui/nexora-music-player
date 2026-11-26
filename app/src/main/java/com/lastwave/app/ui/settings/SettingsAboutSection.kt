@@ -706,7 +706,7 @@ internal fun AboutCard(
                 shape = ExpressivePillShape,
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Clash-Projects/LastWave-Desktop"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mdsarimsd-ui/nexora-music-player/releases"))
                     if (!startActivitySafely(context, intent)) {
                         android.widget.Toast.makeText(context, context.getString(R.string.toast_no_browser_plain), android.widget.Toast.LENGTH_SHORT).show()
                     }

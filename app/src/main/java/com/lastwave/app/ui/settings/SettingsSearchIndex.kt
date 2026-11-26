@@ -1543,7 +1543,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "about.source_code",
                     title = "Open Source Code",
-                    subtitle = "View repository at github.com/Clash-Projects/LastWave-native",
+                    subtitle = "View repository at github.com/mdsarimsd-ui/nexora-music-player",
                     keywords = listOf(
                         "source code", "github", "open source", "repository", "gpl", "license",
                         "contribute", "git"
@@ -1560,7 +1560,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "about.desktop_app",
                     title = "Download Desktop App",
-                    subtitle = "View repository at github.com/Clash-Projects/LastWave-Desktop",
+                    subtitle = "Get desktop builds at github.com/mdsarimsd-ui/nexora-music-player/releases",
                     keywords = listOf(
                         "desktop", "pc", "windows", "mac", "linux", "electron", "github", "clash-projects",
                         "download"

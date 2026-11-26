@@ -562,7 +562,7 @@ fun Modifier.drawInteractiveGlass(
             onDrawSurface = {
                 val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
                 drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
-                if (glassStyle == GlassStyle.CHROME) {
+                if (GlassTheme.style == GlassStyle.CHROME) {
                     drawRect(
                         brush = Brush.linearGradient(
                             colors = listOf(

@@ -44,6 +44,8 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.lastwave.app.data.feed.InstagramTrending
+import com.lastwave.app.data.feed.TrendingInstagramEntry
 
 @Immutable
 data class FeedUiState(
@@ -119,6 +121,12 @@ class FeedViewModel @Inject constructor(
     private val _topGenres = MutableStateFlow<List<String>>(emptyList())
     val topGenres: StateFlow<List<String>> = _topGenres.asStateFlow()
 
+    private val _allTimeHits = MutableStateFlow<List<YouTubeMusicTrack>>(emptyList())
+    val allTimeHits: StateFlow<List<YouTubeMusicTrack>> = _allTimeHits.asStateFlow()
+
+    private val _instagramTrending = MutableStateFlow<List<TrendingInstagramEntry>>(emptyList())
+    val instagramTrending: StateFlow<List<TrendingInstagramEntry>> = _instagramTrending.asStateFlow()
+
     /** Ids of Home sections the user hid in Settings → Home sections. */
     val hiddenHomeSections: StateFlow<Set<String>> = settingsPreferences.settings
         .map { it.hiddenHomeSections }
@@ -171,6 +179,22 @@ class FeedViewModel @Inject constructor(
     init {
         loadDiscovery()
         loadTopGenres()
+        // Home rebuild: the All-Time Hits row and the Instagram trending row
+        // resolve independently of the main feed fetch.
+        viewModelScope.launch(Dispatchers.IO) {
+            val hits = runCatching { innerTube.searchSongs("all time hits", limit = 25) }
+                .getOrDefault(emptyList())
+            _allTimeHits.value = hits
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val resolved = InstagramTrending.CURRENT.map { entry ->
+                val track = runCatching {
+                    innerTube.searchSongs("${entry.audio} ${entry.artist}", limit = 1)
+                }.getOrNull()?.firstOrNull()
+                TrendingInstagramEntry(entry.audio, entry.artist, entry.reels, track)
+            }
+            _instagramTrending.value = resolved
+        }
         viewModelScope.launch {
             // The podcast shelf is part of the feed, so flipping the setting
             // has to re-run the feed: the cached copy still holds the shelf.

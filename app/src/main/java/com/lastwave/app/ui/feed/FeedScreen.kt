@@ -179,6 +179,8 @@ import com.lastwave.app.ui.player.LocalMusicPlayer
 import com.lastwave.app.ui.player.PlayingWaveBars
 import com.lastwave.app.ui.shell.FloatingNavDefaults
 import com.lastwave.app.ui.podcast.PodcastShowRow
+import com.lastwave.app.data.feed.TrendingInstagramEntry
+import androidx.compose.ui.draw.clip
 
 private fun LazyListScope.feedSectionItem(
     key: Any,
@@ -242,6 +244,8 @@ fun FeedScreen(
     val podcastsEnabled by viewModel.podcastsEnabled.collectAsStateWithLifecycle()
     val topGenres by viewModel.topGenres.collectAsStateWithLifecycle()
     val previewQueues by viewModel.previewQueues.collectAsStateWithLifecycle()
+    val allTimeHits by viewModel.allTimeHits.collectAsStateWithLifecycle()
+    val instagramTrending by viewModel.instagramTrending.collectAsStateWithLifecycle()
     fun isSectionVisible(section: HomeSection) = section.id !in hiddenSections
     val snackbarHostState = remember { SnackbarHostState() }
     val hasFeedContent = state.isChipActive || state.feedData.hasContent
@@ -659,7 +663,10 @@ fun FeedScreen(
                     fun ytShelf(key: String): HomeShelf? =
                         if (key in ytResolved) ytResolved[key] else resolveNativeShelf(key).also { ytResolved[key] = it }
 
-                    val allCandidateKeys = (DEFAULT_SECTION_ORDER + homeSectionsOrder + remainingShelfKeys).distinct()
+                    // Home rebuild: the approved mockup keeps exactly four rows.
+                    val allCandidateKeys = listOf(
+                        "trending_instagram", "trending_songs", "global_hits", "all_time_hits",
+                    )
                     val candidateKeys = allCandidateKeys.filter { key ->
                         key != "hero_greeting" && key != "infinite_radio" && key != "quick_tiles" &&
                             !isSectionIdHidden(key)
@@ -678,9 +685,7 @@ fun FeedScreen(
                     })
                     val (pinned, unpinned) = sorted.partition { it in pinnedHomeSections }
                     val ordered = pinned + unpinned
-                    val available = ordered.filter { key ->
-                        if (key.startsWith("yt:")) ytShelf(key) != null else isSectionAvailable(key)
-                    }
+                    val available = ordered
 
                     // Two keys can point at the same shelf (old saved key vs live title,
                     // different case, fuzzy match). Keep one per shelf, exact title first.
@@ -702,17 +707,7 @@ fun FeedScreen(
                     sections to winners.associateWith { key -> ytShelf(key)!! }
                 }
 
-                val visiblePagedShelfKeys = remember(state.pagedShelves, allHiddenIds, ytHidden, state.isChipActive) {
-                    if (state.isChipActive) emptyList()
-                    else {
-                        state.pagedShelves.mapIndexedNotNull { shelfIndex, shelf ->
-                            val pagedKey = "yt:${shelf.title}"
-                            if (shelf.items.isNotEmpty() && !isSectionIdHidden(pagedKey) && !isShelfTitleHidden(shelf.title)) {
-                                "paged_shelf_${shelfIndex}_${shelf.title}"
-                            } else null
-                        }
-                    }
-                }
+                val visiblePagedShelfKeys = remember(state.pagedShelves) { emptyList<String>() }
 
                 val pagedShelvesByKey = remember(state.pagedShelves) {
                     state.pagedShelves.mapIndexed { index, shelf -> "paged_shelf_${index}_${shelf.title}" to shelf }.toMap()
@@ -722,9 +717,8 @@ fun FeedScreen(
                 }
 
                 val showInitialPlaceholders = showSynthetic && state.isFeedUpdating && state.feedData.lastUpdatedMillis == 0L
-                val isInfiniteRadioVisible = showSynthetic && (combinedQuickPicks.isNotEmpty() || showInitialPlaceholders)
-                val isQuickTilesVisible = showSynthetic && isSectionVisible(HomeSection.QUICK_TILES) &&
-                    (quickTiles.isNotEmpty() || showInitialPlaceholders)
+                val isInfiniteRadioVisible = false
+                val isQuickTilesVisible = false
                 val hasSectionsBelowQuickTiles = allContainerKeys.isNotEmpty()
                 val quickTilesShape = RoundedCornerShape(
                     topStart = if (isInfiniteRadioVisible) 0.dp else 28.dp,
@@ -873,15 +867,6 @@ fun FeedScreen(
                             }
                         }
                     } else {
-                        if (showSynthetic) {
-                            item(key = "hero_greeting", contentType = "hero_greeting") {
-                                ExpressiveGreetingHeader(
-                                    greeting = greeting,
-                                    formattedDate = formattedDate,
-                                )
-                            }
-                        }
-
                         if (isInfiniteRadioVisible) {
                             feedSectionItem(key = "infinite_radio", contentType = "infinite_radio") {
                                 if (combinedQuickPicks.isEmpty()) {
@@ -1388,6 +1373,122 @@ fun FeedScreen(
                                         }
                                     }
                                 }
+                                sectionKey == "trending_instagram" -> {
+                                    feedSectionItem(key = "trending_instagram", contentType = "trending_instagram") {
+                                        HomeContainerSection(
+                                            shape = getContainerShape("trending_instagram"),
+                                        ) {
+                                            FeedSectionHeader(
+                                                title = "Trending on Instagram",
+                                                subtitle = "The audios reels are running on right now",
+                                            )
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(top = 12.dp),
+                                            ) {
+                                                itemsIndexed(instagramTrending) { _, entry ->
+                                                    InstagramTrendCard(
+                                                        entry = entry,
+                                                        onClick = {
+                                                            entry.track?.let { viewModel.playTrack(it, "Trending on Instagram") }
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                sectionKey == "trending_songs" -> {
+                                    feedSectionItem(key = "trending_songs", contentType = "trending_songs") {
+                                        val trendingSongs = state.feedData.charts.take(25)
+                                        HomeContainerSection(
+                                            shape = getContainerShape("trending_songs"),
+                                        ) {
+                                            FeedSectionHeader(
+                                                title = "Trending Songs",
+                                                subtitle = "Rising fastest on the charts",
+                                                onShuffleClick = { viewModel.shuffleTracksQueue(trendingSongs, "Trending Songs") },
+                                                onLongClick = { sectionMenuTarget = "trending_songs" to "Trending Songs" },
+                                            )
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(top = 12.dp),
+                                            ) {
+                                                itemsIndexed(trendingSongs) { _, track ->
+                                                    FeedMediaCard(
+                                                        title = track.title,
+                                                        subtitle = track.artist,
+                                                        artworkUrl = track.artworkUrl,
+                                                        fallbackIcon = Icons.Filled.MusicNote,
+                                                        onClick = { viewModel.playTrack(track, "Trending Songs") },
+                                                        onPlayClick = { viewModel.playTrack(track, "Trending Songs") },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                sectionKey == "global_hits" -> {
+                                    feedSectionItem(key = "global_hits", contentType = "global_hits") {
+                                        val globalHits = state.feedData.charts.drop(25).take(25)
+                                        HomeContainerSection(
+                                            shape = getContainerShape("global_hits"),
+                                        ) {
+                                            FeedSectionHeader(
+                                                title = "Global Hits",
+                                                subtitle = "What the world is playing",
+                                                onShuffleClick = { viewModel.shuffleTracksQueue(globalHits, "Global Hits") },
+                                                onLongClick = { sectionMenuTarget = "global_hits" to "Global Hits" },
+                                            )
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(top = 12.dp),
+                                            ) {
+                                                itemsIndexed(globalHits) { _, track ->
+                                                    FeedMediaCard(
+                                                        title = track.title,
+                                                        subtitle = track.artist,
+                                                        artworkUrl = track.artworkUrl,
+                                                        fallbackIcon = Icons.Filled.MusicNote,
+                                                        onClick = { viewModel.playTrack(track, "Global Hits") },
+                                                        onPlayClick = { viewModel.playTrack(track, "Global Hits") },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                sectionKey == "all_time_hits" -> {
+                                    feedSectionItem(key = "all_time_hits", contentType = "all_time_hits") {
+                                        HomeContainerSection(
+                                            shape = getContainerShape("all_time_hits"),
+                                        ) {
+                                            FeedSectionHeader(
+                                                title = "All-Time Hits",
+                                                subtitle = "The songs that never left the playlist",
+                                                onShuffleClick = { viewModel.shuffleTracksQueue(allTimeHits, "All-Time Hits") },
+                                                onLongClick = { sectionMenuTarget = "all_time_hits" to "All-Time Hits" },
+                                            )
+                                            QuickPicksRows(
+                                                tracks = allTimeHits,
+                                                currentPlayingVideoId = playbackState.current?.videoId,
+                                                isPlaying = playbackState.isPlaying,
+                                                onTrackClick = { index ->
+                                                    val track = allTimeHits.getOrNull(index)
+                                                    if (track != null) {
+                                                        viewModel.playTrack(track, "All-Time Hits")
+                                                    } else {
+                                                        viewModel.playTracksQueue(allTimeHits, index, "All-Time Hits")
+                                                    }
+                                                },
+                                                onMenuClick = { menuTrack = it },
+                                            )
+                                        }
+                                    }
+                                }
                                 sectionKey == "trending_charts" || sectionKey == "charts" -> {
                                     feedSectionItem(key = "trending_charts", contentType = "trending_charts") {
                                         HomeContainerSection(
@@ -1789,5 +1890,62 @@ fun FeedScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun InstagramTrendCard(
+    entry: TrendingInstagramEntry,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .width(150.dp)
+            .height(196.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF2B2B3F), Color(0xFF15151F)),
+                ),
+            ),
+    ) {
+        entry.track?.artworkUrl?.let { url ->
+            AsyncImage(
+                model = url,
+                contentDescription = entry.audio,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.85f),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(12.dp),
+        ) {
+            Text(
+                text = entry.audio,
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = entry.reels,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.75f),
+            )
+        }
     }
 }

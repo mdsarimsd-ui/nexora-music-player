@@ -10,9 +10,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.lastwave.app.data.local.AiSession
+import com.lastwave.app.data.local.AiStoredMessage
 import javax.inject.Inject
 
 /** One turn in the assistant transcript. */
@@ -42,6 +45,60 @@ class AiAssistantViewModel @Inject constructor(
 
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy
+
+    /** Saved conversations, newest first; shown as history chips in the sheet. */
+    val sessions: StateFlow<List<AiSession>> = aiPreferences.sessions
+        .map { it.sortedByDescending { s -> s.updatedAt } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Id of the conversation new messages are appended to; null = fresh chat. */
+    private var activeSessionId: String? = null
+
+    /** Writes the current transcript into the active session and persists it. */
+    private fun persistChat() {
+        val msgs = _chat.value
+        if (msgs.isEmpty()) return
+        val id = activeSessionId
+            ?: java.util.UUID.randomUUID().toString().also { activeSessionId = it }
+        val title = msgs.firstOrNull { it.fromUser }?.text?.take(48)?.trim().takeIf { t -> !t.isNullOrBlank() } ?: "Chat"
+        val stored = msgs.map { AiStoredMessage(fromUser = it.fromUser, text = it.text, isError = it.isError) }
+        val session = AiSession(
+            id = id,
+            title = title,
+            updatedAt = System.currentTimeMillis(),
+            messages = stored,
+        )
+        viewModelScope.launch {
+            val existing = aiPreferences.sessions.first().filterNot { it.id == id }
+            aiPreferences.saveSessions((listOf(session) + existing).take(30))
+        }
+    }
+
+    /** Start a fresh conversation; the old one stays in history. */
+    fun newChat() {
+        activeSessionId = null
+        _chat.value = emptyList()
+    }
+
+    /** Reopen a saved conversation; new replies continue it. */
+    fun openSession(id: String) {
+        val session = _sessions.value.firstOrNull { it.id == id } ?: return
+        activeSessionId = id
+        _chat.value = session.messages.map {
+            AiChatMessage(fromUser = it.fromUser, text = it.text, isError = it.isError)
+        }
+    }
+
+    fun deleteSession(id: String) {
+        viewModelScope.launch {
+            val next = aiPreferences.sessions.first().filterNot { it.id == id }
+            aiPreferences.saveSessions(next)
+            if (activeSessionId == id) {
+                activeSessionId = null
+                _chat.value = emptyList()
+            }
+        }
+    }
 
     fun setEnabled(enabled: Boolean) {
         viewModelScope.launch { aiPreferences.setEnabled(enabled) }
@@ -84,6 +141,7 @@ class AiAssistantViewModel @Inject constructor(
                     )
                 },
             )
+            persistChat()
             _busy.value = false
         }
     }
@@ -105,6 +163,7 @@ class AiAssistantViewModel @Inject constructor(
                     )
                 },
             )
+            persistChat()
             _busy.value = false
         }
     }
@@ -126,6 +185,7 @@ class AiAssistantViewModel @Inject constructor(
                     )
                 },
             )
+            persistChat()
             _busy.value = false
         }
     }
@@ -148,6 +208,7 @@ class AiAssistantViewModel @Inject constructor(
                     )
                 },
             )
+            persistChat()
             _busy.value = false
         }
     }

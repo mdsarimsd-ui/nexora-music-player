@@ -7,6 +7,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,6 +29,23 @@ data class AiSettings(
     val isUsable: Boolean get() = enabled && apiKey.isNotBlank()
 }
 
+/** One stored assistant turn (playlist cards restore as text only). */
+@Serializable
+data class AiStoredMessage(
+    val fromUser: Boolean = false,
+    val text: String = "",
+    val isError: Boolean = false,
+)
+
+/** One saved assistant conversation, selectable from history. */
+@Serializable
+data class AiSession(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val title: String = "",
+    val updatedAt: Long = 0L,
+    val messages: List<AiStoredMessage> = emptyList(),
+)
+
 @Singleton
 class AiPreferences @Inject constructor(
     private val dataStore: DataStore<Preferences>,
@@ -34,6 +55,7 @@ class AiPreferences @Inject constructor(
         val PROVIDER = stringPreferencesKey("lw_aiProvider")
         val API_KEY = stringPreferencesKey("lw_aiApiKey")
         val MODEL = stringPreferencesKey("lw_aiModel")
+        val SESSIONS = stringPreferencesKey("lw_aiSessions")
     }
 
     val settings: Flow<AiSettings> = dataStore.data.map { prefs ->
@@ -43,6 +65,19 @@ class AiPreferences @Inject constructor(
             apiKey = prefs[Keys.API_KEY] ?: "",
             model = prefs[Keys.MODEL]?.takeIf { it != "gemini-2.0-flash" } ?: "gemini-3.8-flash",
         )
+    }
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /** Saved assistant conversations, newest first after sorting in the UI. */
+    val sessions: Flow<List<AiSession>> = dataStore.data.map { prefs ->
+        runCatching {
+            prefs[Keys.SESSIONS]?.let { json.decodeFromString<List<AiSession>>(it) }
+        }.getOrNull().orEmpty()
+    }
+
+    suspend fun saveSessions(list: List<AiSession>) {
+        dataStore.edit { it[Keys.SESSIONS] = json.encodeToString(list) }
     }
 
     suspend fun setEnabled(enabled: Boolean) {

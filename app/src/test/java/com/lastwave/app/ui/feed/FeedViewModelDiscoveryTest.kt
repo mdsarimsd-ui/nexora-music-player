@@ -78,6 +78,7 @@ class FeedViewModelDiscoveryTest {
             recommendationRepository, ytAuth, homeRepository, discoverRepository, genresRepository,
             previewQueueRepository,
             mockk(relaxed = true),
+            mockk(relaxed = true),
         )
         fun waitForDiscovery() {
             val deadline = System.currentTimeMillis() + 2_000
@@ -110,6 +111,7 @@ class FeedViewModelDiscoveryTest {
             genresRepository,
             previewQueueRepository,
             mockk(relaxed = true),
+            mockk(relaxed = true),
         )
 
         assertThat(viewModel.discoveryTracks.value).containsExactly(mockTrack)
@@ -133,6 +135,7 @@ class FeedViewModelDiscoveryTest {
             discoverRepository,
             genresRepository,
             previewQueueRepository,
+            mockk(relaxed = true),
             mockk(relaxed = true),
         )
 

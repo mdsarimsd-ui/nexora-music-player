@@ -249,6 +249,8 @@ fun FeedScreen(
     val allTimeHits by viewModel.allTimeHits.collectAsStateWithLifecycle()
     val instagramTrending by viewModel.instagramTrending.collectAsStateWithLifecycle()
     val songRows by viewModel.songRows.collectAsStateWithLifecycle()
+    val forYou by viewModel.forYou.collectAsStateWithLifecycle()
+    val moreLike by viewModel.moreLike.collectAsStateWithLifecycle()
     val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
     fun isSectionVisible(section: HomeSection) = section.id !in hiddenSections
     val snackbarHostState = remember { SnackbarHostState() }
@@ -669,11 +671,15 @@ fun FeedScreen(
                         if (key in ytResolved) ytResolved[key] else resolveNativeShelf(key).also { ytResolved[key] = it }
 
                     // Home rebuild: quick access first, then song-only rows, Hindi and English.
+                    val verticalSongs = (songRows.values.flatten() + forYou + moreLike)
+                        .distinctBy { it.videoId }
+                        .take(60)
                     val allCandidateKeys = listOf(
                         "your_playlists", "trending_instagram", "trending_songs", "row:hindi", "row:english",
                         "global_hits", "row:punjabi", "row:party", "row:romantic",
                         "all_time_hits", "row:90s", "row:sad",
                         "row:new", "row:lofi", "row:retro", "row:workout",
+                        "for_you", "more_songs",
                     )
                     val candidateKeys = allCandidateKeys.filter { key ->
                         key != "hero_greeting" && key != "infinite_radio" && key != "quick_tiles" &&
@@ -697,6 +703,8 @@ fun FeedScreen(
                         when {
                             key == "your_playlists" -> savedPlaylists.isNotEmpty()
                             key.startsWith("row:") -> songRows[key.removePrefix("row:")].orEmpty().isNotEmpty()
+                            key == "for_you" -> forYou.isNotEmpty()
+                            key == "more_songs" -> verticalSongs.isNotEmpty()
                             else -> true
                         }
                     }
@@ -1421,6 +1429,61 @@ fun FeedScreen(
                                         }
                                     }
                                 }
+                                sectionKey == "for_you" -> {
+                                    feedSectionItem(key = "for_you", contentType = "for_you") {
+                                        LaunchedEffect(forYou) { viewModel.warmQuickPicks(forYou.take(2)) }
+                                        HomeContainerSection(shape = getContainerShape("for_you")) {
+                                            FeedSectionHeader(
+                                                title = "Based on Your Listening",
+                                                subtitle = "From the songs you play most",
+                                                onShuffleClick = { viewModel.shuffleTracksQueue(forYou, "Based on Your Listening") },
+                                                onLongClick = { sectionMenuTarget = "for_you" to "Based on Your Listening" },
+                                            )
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(top = 12.dp),
+                                            ) {
+                                                itemsIndexed(forYou) { _, track ->
+                                                    FeedMediaCard(
+                                                        title = track.title,
+                                                        subtitle = track.artist,
+                                                        artworkUrl = track.artworkUrl,
+                                                        fallbackIcon = Icons.Filled.MusicNote,
+                                                        onClick = { viewModel.playTrack(track, "Based on Your Listening") },
+                                                        onPlayClick = { viewModel.playTrack(track, "Based on Your Listening") },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                sectionKey == "more_songs" -> {
+                                    feedSectionItem(key = "more_songs", contentType = "more_songs") {
+                                        HomeContainerSection(shape = getContainerShape("more_songs")) {
+                                            FeedSectionHeader(
+                                                title = "More Songs",
+                                                subtitle = "Keep scrolling, there is plenty more",
+                                                onShuffleClick = { viewModel.shuffleTracksQueue(verticalSongs, "More Songs") },
+                                                onLongClick = { sectionMenuTarget = "more_songs" to "More Songs" },
+                                            )
+                                            Column(
+                                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier
+                                                    .padding(top = 12.dp)
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp),
+                                            ) {
+                                                verticalSongs.forEach { track ->
+                                                    FeedListRow(
+                                                        track = track,
+                                                        onClick = { viewModel.playTrack(track, "More Songs") },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 sectionKey == "your_playlists" -> {
                                     feedSectionItem(key = "your_playlists", contentType = "your_playlists") {
                                         HomeContainerSection(shape = getContainerShape("your_playlists")) {
@@ -2057,5 +2120,52 @@ private fun InstagramTrendCard(
                 color = Color.White.copy(alpha = 0.75f),
             )
         }
+    }
+}
+
+@Composable
+private fun FeedListRow(
+    track: com.lastwave.app.data.music.YouTubeMusicTrack,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = track.artworkUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            imageVector = Icons.Filled.PlayArrow,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

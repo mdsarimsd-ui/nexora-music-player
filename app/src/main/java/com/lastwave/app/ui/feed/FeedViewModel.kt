@@ -96,6 +96,7 @@ class FeedViewModel @Inject constructor(
     private val genresRepository: com.lastwave.app.data.generate.GenresRepository,
     private val previewQueueRepository: com.lastwave.app.data.queue.PreviewQueueRepository? = null,
     private val playlistRepository: com.lastwave.app.data.playlist.PlaylistRepository,
+    private val songStats: com.lastwave.app.data.repository.SongPlayStatsRepository,
 ) : ViewModel() {
 
     val previewQueues: StateFlow<List<com.lastwave.app.data.queue.PreviewQueue>> =
@@ -141,6 +142,14 @@ class FeedViewModel @Inject constructor(
 
     private val _songRows = MutableStateFlow<Map<String, List<YouTubeMusicTrack>>>(emptyMap())
     val songRows: StateFlow<Map<String, List<YouTubeMusicTrack>>> = _songRows.asStateFlow()
+
+    // For You: built from the user's real local play stats (most played +
+    // recently played), plus search rows in the style of their top artists.
+    private val _forYou = MutableStateFlow<List<YouTubeMusicTrack>>(emptyList())
+    val forYou: StateFlow<List<YouTubeMusicTrack>> = _forYou.asStateFlow()
+
+    private val _moreLike = MutableStateFlow<List<YouTubeMusicTrack>>(emptyList())
+    val moreLike: StateFlow<List<YouTubeMusicTrack>> = _moreLike.asStateFlow()
 
     private val _instagramTrending = MutableStateFlow<List<TrendingInstagramEntry>>(emptyList())
     val instagramTrending: StateFlow<List<TrendingInstagramEntry>> = _instagramTrending.asStateFlow()
@@ -210,6 +219,38 @@ class FeedViewModel @Inject constructor(
                     .getOrDefault(emptyList())
             }
             _songRows.value = results.toMap().filterValues { it.isNotEmpty() }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val history = runCatching { songStats.recentlyPlayed(40) }.getOrDefault(emptyList())
+            val most = runCatching { songStats.mostPlayedSince(days = 90, limit = 100) }
+                .getOrDefault(emptyList())
+            val played = (most.sortedByDescending { it.playCount } + history)
+                .filter { !it.videoId.isNullOrBlank() }
+                .distinctBy { it.trackKey }
+            _forYou.value = played.take(50).map { stats ->
+                YouTubeMusicTrack(
+                    videoId = stats.videoId!!,
+                    title = stats.title,
+                    artist = stats.artist,
+                    artworkUrl = stats.artworkUrl,
+                )
+            }
+            if (_forYou.value.isNotEmpty()) {
+                val topArtists = most.sortedByDescending { it.playCount }
+                    .map { com.lastwave.app.util.ArtistHelper.primaryArtist(it.artist) }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(3)
+                val related = topArtists.flatMap { artist ->
+                    runCatching { innerTube.searchSongs("$artist songs", limit = 30) }
+                        .getOrDefault(emptyList())
+                }
+                val playedIds = _forYou.value.map { it.videoId }.toSet()
+                _moreLike.value = related
+                    .filter { it.videoId !in playedIds }
+                    .distinctBy { it.videoId }
+                    .take(60)
+            }
         }
         viewModelScope.launch(Dispatchers.IO) {
             val resolved = InstagramTrending.CURRENT.map { entry ->

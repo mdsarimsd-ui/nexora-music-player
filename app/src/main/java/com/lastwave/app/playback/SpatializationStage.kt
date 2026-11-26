@@ -213,14 +213,33 @@ class SpatializationStage {
                 if (itdBuf.isNotEmpty()) {
                     itdBuf[itdIdx] = shadowState
                 }
-                val delayL = (itdMaxSamples * lateral.coerceAtLeast(0f)).toInt()
-                val delayR = (itdMaxSamples * (-lateral).coerceAtLeast(0f)).toInt()
                 val n = itdBuf.size
-                val idxL = (itdIdx - delayL + n) % n
-                val idxR = (itdIdx - delayR + n) % n
                 val panDepth = 0.85f
-                val coreL = (if (n > 0) itdBuf[idxL] else mono) * panL * panDepth
-                val coreR = (if (n > 0) itdBuf[idxR] else mono) * panR * panDepth
+                // Fractional (linearly interpolated) per-ear delay taps. The
+                // old taps stepped a whole sample at a time, so the swing
+                // moved in tiny stairs you could hear as a zipper on 8D and
+                // a flutter on 16D. Reading between the two nearest samples
+                // keeps the motion continuous instead.
+                val coreL: Float
+                val coreR: Float
+                if (n > 0) {
+                    val maxDelay = (n - 2).coerceAtLeast(0).toFloat()
+                    val delayLs = (itdMaxSamples * lateral.coerceAtLeast(0f)).coerceIn(0f, maxDelay)
+                    val delayRs = (itdMaxSamples * (-lateral).coerceAtLeast(0f)).coerceIn(0f, maxDelay)
+                    val dL0 = delayLs.toInt()
+                    val fracL = delayLs - dL0
+                    val dR0 = delayRs.toInt()
+                    val fracR = delayRs - dR0
+                    val iL0 = (itdIdx - dL0 + n) % n
+                    val iL1 = (itdIdx - dL0 - 1 + n) % n
+                    val iR0 = (itdIdx - dR0 + n) % n
+                    val iR1 = (itdIdx - dR0 - 1 + n) % n
+                    coreL = (itdBuf[iL0] * (1f - fracL) + itdBuf[iL1] * fracL) * panL * panDepth
+                    coreR = (itdBuf[iR0] * (1f - fracR) + itdBuf[iR1] * fracR) * panR * panDepth
+                } else {
+                    coreL = mono * panL * panDepth
+                    coreR = mono * panR * panDepth
+                }
                 itdIdx = if (n > 0) (itdIdx + 1) % n else 0
 
                 val dry = 0.35f

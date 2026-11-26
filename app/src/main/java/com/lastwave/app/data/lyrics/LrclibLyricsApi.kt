@@ -134,7 +134,7 @@ class LrclibLyricsApi @Inject constructor(
                 Regex("(?i)\\b(mashup|megamix|mixtape|medley|mix|cover|jukebox|slowed\\s*\\+?\\s*reverb|slowed\\s*and\\s*reverb|slowed|reverb|lo-?fi|8d\\s*audio|8d|16d\\s*audio|16d)\\b"),
                 " ",
             )
-                .replace(Regex("[\u00b7\u2022\u2013\u2014-]+\s*$"), "")
+                .replace(Regex("[\\u00b7\\u2022\\u2013\\u2014-]+\\s*$"), "")
                 .replace(Regex("\\s*\\.{2,}|\u2026"), "")
                 .trim(' ', '-', '.', ',')
         }

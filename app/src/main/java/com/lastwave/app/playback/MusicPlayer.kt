@@ -26,6 +26,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import com.lastwave.app.data.local.musicHapticsConfig
+import com.lastwave.app.ui.overlay.NotchPlayerService
 import com.lastwave.app.data.lyrics.LyricLine
 import com.lastwave.app.data.lyrics.LyricsResult
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -981,10 +982,20 @@ class MusicPlayer @Inject constructor(
         }
     }
 
+    private fun syncNotchPlayer(p: Player) {
+        val hasMedia = p.currentMediaItem != null
+        if (hasMedia && (p.isPlaying || p.playWhenReady)) {
+            NotchPlayerService.maybeStart(appContext)
+        } else if (!hasMedia || p.playbackState == Player.STATE_IDLE || p.playbackState == Player.STATE_ENDED) {
+            NotchPlayerService.maybeStop(appContext)
+        }
+    }
+
     internal val listener: Player.Listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             if (player === this@MusicPlayer.player) {
                 refresh(player)
+                syncNotchPlayer(player)
             }
         }
         override fun onRepeatModeChanged(repeatMode: Int) {

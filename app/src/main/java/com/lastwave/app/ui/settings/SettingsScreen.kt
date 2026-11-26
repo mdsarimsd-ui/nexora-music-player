@@ -1244,7 +1244,8 @@ fun SettingsScreen(
                         item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SectionLabel(stringResource(R.string.settings_section_appearance))
-                    SettingsGroup(rowCount = 15) { index, position ->
+                    SettingsGroup(rowCount = 16) { index, position ->
+                        val notchCtx = LocalContext.current
                         when (index) {
                             0 -> ThemeModeSelectorCard(
                                 currentThemeMode = theme?.themeMode ?: ThemeMode.SYSTEM,
@@ -1319,6 +1320,35 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setLiquidGlass,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.liquid_glass"),
+                            )
+                            15 -> SettingsToggleCard(
+                                icon = Icons.Filled.BubbleChart,
+                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                title = "Notch player",
+                                subtitle = "Liquid glass pill under the camera cutout while music plays",
+                                checked = com.lastwave.app.ui.overlay.NotchPlayerPrefs.enabled(notchCtx),
+                                onCheckedChange = { notchOn ->
+                                    com.lastwave.app.ui.overlay.NotchPlayerPrefs.setEnabled(notchCtx, notchOn)
+                                    if (notchOn) {
+                                        if (android.provider.Settings.canDrawOverlays(notchCtx)) {
+                                            com.lastwave.app.ui.overlay.NotchPlayerService.maybeStart(notchCtx)
+                                        } else {
+                                            runCatching {
+                                                notchCtx.startActivity(
+                                                    android.content.Intent(
+                                                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                        android.net.Uri.parse("package:" + notchCtx.packageName),
+                                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        com.lastwave.app.ui.overlay.NotchPlayerService.maybeStop(notchCtx)
+                                    }
+                                },
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "appearance.notch_player"),
                             )
                             7 -> SettingsToggleCard(
                                 icon = Icons.Filled.Apps,

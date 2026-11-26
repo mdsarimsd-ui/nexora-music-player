@@ -32,6 +32,7 @@ class SpatializationStage {
     private var lastAppliedMode: SpatializationMode = SpatializationMode.OFF
 
     private var panRad = 0.0
+    private var breatheRad = 0.0
     private var alternationPhase = 0.0
     private var reverbRateHz = 0
 
@@ -75,6 +76,7 @@ class SpatializationStage {
         if (sampleRateHz == reverbRateHz && combBuf.isNotEmpty()) return
         reverbRateHz = sampleRateHz
         panRad = 0.0
+        breatheRad = 0.0
         alternationPhase = 0.0
         val scale = sampleRateHz / 44100.0
         combDelay = intArrayOf(1119, 1189, 1277, 1367)
@@ -130,6 +132,7 @@ class SpatializationStage {
             // center immediately, instead of continuing a stale rotation.
             lastAppliedMode = mode
             panRad = 0.0
+        breatheRad = 0.0
             alternationPhase = 0.0
             shadowState = 0f
             bassSplitState = 0f
@@ -152,6 +155,10 @@ class SpatializationStage {
             val rotationPerFrame = 2.0 * PI * rotationHz / sampleRateHz
             val alternationPerFrame = 2.0 * PI * alternationHz / sampleRateHz
             var theta = panRad
+            breatheRad = (breatheRad + rotationPerFrame * 0.25) % TAU
+            // organic glide: pro 8D tools modulate rotation speed slightly so the
+            // circle breathes instead of spinning like a turntable
+            val step = rotationPerFrame * (1.0 + 0.18 * kotlin.math.sin(breatheRad))
             var alt = alternationPhase
             var pos = output.position()
             val limit = output.limit()
@@ -180,7 +187,7 @@ class SpatializationStage {
                     lateral = gL
                     // Front half of the circle is the positive sine side.
                     behindness = (-sin(theta)).toFloat().coerceIn(0f, 1f)
-                    theta += rotationPerFrame
+                    theta += step
                     if (theta > TAU) theta %= TAU
                 } else {
                     // Ear to ear: a smooth left-right swing and back, equal
@@ -265,6 +272,7 @@ class SpatializationStage {
 
     fun reset() {
         panRad = 0.0
+        breatheRad = 0.0
         alternationPhase = 0.0
         shadowState = 0f
         bassSplitState = 0f

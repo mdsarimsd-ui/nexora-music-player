@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.CornerRadius
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
@@ -525,10 +527,18 @@ fun Modifier.drawInteractiveGlass(
                 val l = (luminanceAnimation * 2f - 1f).let { sign(it) * it * it }
                 val press = interaction?.pressProgress ?: 0f
                 colorControls(
-                    brightness = GlassRecipe.BRIGHTNESS,
-                    contrast = GlassRecipe.CONTRAST,
-                    saturation = GlassRecipe.SATURATION *
-                        (if (glassStyle == GlassStyle.BOLD) 1.18f else 1f),
+                    brightness = GlassRecipe.BRIGHTNESS + when (glassStyle) {
+                        GlassStyle.BOLD -> 0.06f
+                        GlassStyle.CHROME -> 0.08f
+                        GlassStyle.CLASSIC -> 0f
+                    },
+                    contrast = GlassRecipe.CONTRAST *
+                        (if (glassStyle == GlassStyle.CHROME) 1.12f else 1f),
+                    saturation = GlassRecipe.SATURATION * when (glassStyle) {
+                        GlassStyle.BOLD -> 1.35f
+                        GlassStyle.CHROME -> 1.45f
+                        GlassStyle.CLASSIC -> 1f
+                    },
                 )
                 blur(
                     (
@@ -545,12 +555,12 @@ fun Modifier.drawInteractiveGlass(
                                 -l,
                             )
                         }
-                    ) * (blurScale * (if (glassStyle == GlassStyle.BOLD) 1.8f else 1f)) +
+                    ) * (blurScale * (if (glassStyle == GlassStyle.BOLD) 2.8f else 1f)) +
                         GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
                 )
                 lens(
                     size.minDimension /
-                        (GlassRecipe.LENS_DIVISOR * (if (glassStyle == GlassStyle.CHROME) 0.55f else 1f)) +
+                        (GlassRecipe.LENS_DIVISOR * (if (glassStyle == GlassStyle.CHROME) 0.30f else 1f)) +
                         GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
                     size.minDimension / 2f,
                     false,
@@ -561,20 +571,46 @@ fun Modifier.drawInteractiveGlass(
             },
             onDrawSurface = {
                 val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
-                drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
-                if (GlassTheme.style == GlassStyle.CHROME) {
+                val scrimBoost = if (glassStyle == GlassStyle.BOLD) 0.12f else 0f
+                drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken + scrimBoost))
+                if (glassStyle == GlassStyle.CHROME) {
                     drawRect(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.16f),
+                                Color.White.copy(alpha = 0.32f),
                                 Color.Transparent,
                                 Color.Transparent,
-                                Color.White.copy(alpha = 0.08f),
+                                Color.White.copy(alpha = 0.20f),
                             ),
                             start = Offset.Zero,
                             end = Offset(size.width, size.height),
                         ),
                         blendMode = BlendMode.Plus,
+                    )
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.14f),
+                                Color.Transparent,
+                            ),
+                            start = Offset(0f, size.height),
+                            end = Offset(size.width, 0f),
+                        ),
+                        blendMode = BlendMode.Plus,
+                    )
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.85f),
+                                Color.White.copy(alpha = 0.12f),
+                                Color.White.copy(alpha = 0.55f),
+                            ),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height),
+                        ),
+                        cornerRadius = CornerRadius(size.minDimension / 6f),
+                        style = Stroke(width = 1.5.dp.toPx()),
                     )
                 }
                 val press = interaction?.pressProgress ?: 0f

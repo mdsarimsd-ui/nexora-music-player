@@ -77,6 +77,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lastwave.app.data.ai.AiPlaylistSuggestion
+import com.lastwave.app.ui.theme.LiquidGlassSurface
+import com.lastwave.app.ui.theme.LocalLiquidGlass
+import com.lastwave.app.ui.theme.liquidGlassChrome
 
 /**
  * The AI assistant surface, redesigned as a chat: full-width assistant
@@ -195,9 +198,20 @@ fun AiAssistantSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f),
+        containerColor = Color.Transparent,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
+        LiquidGlassSurface(
+            onClick = {},
+            glassModifier = Modifier.liquidGlassChrome(
+                RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                LocalLiquidGlass.current,
+            ),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -501,6 +515,7 @@ fun AiAssistantSheet(
                 }
             }
         }
+        }
     }
 }
 
@@ -528,7 +543,7 @@ private fun ChatMessageRow(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.78f),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),

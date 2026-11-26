@@ -61,5 +61,9 @@ object SongRows {
         SongRowDef("romantic", "Romantic Hits", "For the slow evenings", "romantic love songs hindi english"),
         SongRowDef("90s", "90s and 2000s Hits", "The golden throwbacks", "90s 2000s hit songs"),
         SongRowDef("sad", "Sad Songs", "For the feelings", "sad songs hindi english"),
+        SongRowDef("new", "New Songs", "Fresh out this week", "new songs this week"),
+        SongRowDef("lofi", "Lofi and Chill", "Slow beats for study and sleep", "lofi chill songs"),
+        SongRowDef("retro", "Retro Bollywood", "The old Hindi classics", "old hindi songs kishore kumar lata"),
+        SongRowDef("workout", "Workout Hits", "High energy for the gym", "workout songs hits"),
     )
 }

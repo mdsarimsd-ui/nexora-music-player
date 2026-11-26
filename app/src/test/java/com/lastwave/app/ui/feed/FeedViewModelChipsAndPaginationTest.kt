@@ -114,6 +114,7 @@ class FeedViewModelChipsAndPaginationTest {
             discoverRepository,
             genresRepository,
             previewQueueRepository,
+            mockk(relaxed = true),
         )
     }
 

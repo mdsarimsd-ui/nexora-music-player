@@ -673,6 +673,7 @@ fun FeedScreen(
                         "your_playlists", "trending_instagram", "trending_songs", "row:hindi", "row:english",
                         "global_hits", "row:punjabi", "row:party", "row:romantic",
                         "all_time_hits", "row:90s", "row:sad",
+                        "row:new", "row:lofi", "row:retro", "row:workout",
                     )
                     val candidateKeys = allCandidateKeys.filter { key ->
                         key != "hero_greeting" && key != "infinite_radio" && key != "quick_tiles" &&
@@ -1480,7 +1481,7 @@ fun FeedScreen(
                                 }
                                 sectionKey == "trending_songs" -> {
                                     feedSectionItem(key = "trending_songs", contentType = "trending_songs") {
-                                        val trendingSongs = state.feedData.charts.take(25)
+                                        val trendingSongs = state.feedData.charts.take(50)
                                             .ifEmpty { songRows["trending"].orEmpty() }
                                         LaunchedEffect(trendingSongs) { viewModel.warmQuickPicks(trendingSongs.take(2)) }
                                         HomeContainerSection(
@@ -1513,7 +1514,7 @@ fun FeedScreen(
                                 }
                                 sectionKey == "global_hits" -> {
                                     feedSectionItem(key = "global_hits", contentType = "global_hits") {
-                                        val globalHits = state.feedData.charts.drop(25).take(25)
+                                        val globalHits = state.feedData.charts.drop(50).take(50)
                                             .ifEmpty { songRows["global"].orEmpty() }
                                         HomeContainerSection(
                                             shape = getContainerShape("global_hits"),

@@ -200,13 +200,13 @@ class FeedViewModel @Inject constructor(
         // Home rebuild: the All-Time Hits row and the Instagram trending row
         // resolve independently of the main feed fetch.
         viewModelScope.launch(Dispatchers.IO) {
-            val hits = runCatching { innerTube.searchSongs("all time hits", limit = 25) }
+            val hits = runCatching { innerTube.searchSongs("all time hits", limit = 50) }
                 .getOrDefault(emptyList())
             _allTimeHits.value = hits
         }
         viewModelScope.launch(Dispatchers.IO) {
             val results = SongRows.DEFS.map { def ->
-                def.id to runCatching { innerTube.searchSongs(def.query, limit = 25) }
+                def.id to runCatching { innerTube.searchSongs(def.query, limit = 50) }
                     .getOrDefault(emptyList())
             }
             _songRows.value = results.toMap().filterValues { it.isNotEmpty() }

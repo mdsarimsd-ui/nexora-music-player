@@ -82,10 +82,12 @@ class AiAssistantViewModel @Inject constructor(
 
     /** Reopen a saved conversation; new replies continue it. */
     fun openSession(id: String) {
-        val session = _sessions.value.firstOrNull { it.id == id } ?: return
-        activeSessionId = id
-        _chat.value = session.messages.map {
-            AiChatMessage(fromUser = it.fromUser, text = it.text, isError = it.isError)
+        viewModelScope.launch {
+            val session = aiPreferences.sessions.first().firstOrNull { it.id == id } ?: return@launch
+            activeSessionId = id
+            _chat.value = session.messages.map {
+                AiChatMessage(fromUser = it.fromUser, text = it.text, isError = it.isError)
+            }
         }
     }
 

@@ -156,6 +156,8 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.AlertDialog
+import com.lastwave.app.playback.PlaybackDiagnostics
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -632,6 +634,57 @@ internal fun AboutCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            var showPlaybackDiagnostics by remember { mutableStateOf(false) }
+            Surface(
+                shape = ExpressivePillShape,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                onClick = { showPlaybackDiagnostics = true },
+            ) {
+                Text(
+                    "Playback diagnostics",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            if (showPlaybackDiagnostics) {
+                val clipboard = LocalClipboardManager.current
+                val logText = remember(showPlaybackDiagnostics) {
+                    PlaybackDiagnostics.snapshot().joinToString("\n")
+                        .ifBlank { "No playback events recorded yet." }
+                }
+                AlertDialog(
+                    onDismissRequest = { showPlaybackDiagnostics = false },
+                    title = { Text("Playback diagnostics") },
+                    text = {
+                        Text(
+                            logText,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            clipboard.setText(AnnotatedString(logText))
+                            android.widget.Toast.makeText(
+                                context,
+                                "Diagnostics copied",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }) { Text("Copy") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            PlaybackDiagnostics.clear()
+                            showPlaybackDiagnostics = false
+                        }) { Text("Clear") }
+                    },
                 )
             }
             Spacer(Modifier.height(12.dp))

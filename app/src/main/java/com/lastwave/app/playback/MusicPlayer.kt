@@ -538,6 +538,8 @@ class MusicPlayer @Inject constructor(
         .stateIn(applicationScope, SharingStarted.WhileSubscribed(5_000), _state.value.withoutProgress())
 
     private var errorRetryCount = 0
+    /** Consecutive auto-skips without one audibly playing track; drives the circuit breaker. */
+    private var consecutiveSkipCount = 0
     /** Local in-app playback volume (persisted). Never holds the cast level. */
     var appVolume: Float = 1f
         private set
@@ -2251,6 +2253,9 @@ class MusicPlayer @Inject constructor(
                         if (playhead != _state.value.positionMs) {
                             _state.update { it.copy(positionMs = playhead) }
                         }
+                        if (playingNow && playhead >= MIN_AUDIBLE_PLAYBACK_MS) {
+                            consecutiveSkipCount = 0
+                        }
                     }
                     if (!isCasting && exclusiveUsbOutput.isActive()) {
                         // Never touch ExoPlayer here. Its playback thread holds
@@ -3098,6 +3103,7 @@ class MusicPlayer @Inject constructor(
                             return@withContext
                         }
                         unavailableMediaIds += failedKey
+                        if (!autoSkipShouldAdvance(failedKey, error)) return@withContext
                         val isShuffle = startShuffled || (playerDelegate.isInitialized() && player.shuffleModeEnabled)
                         val nextIndex = if (isShuffle) {
                             tracks.indices
@@ -5834,6 +5840,41 @@ class MusicPlayer @Inject constructor(
         }
     }
 
+    /**
+     * Circuit breaker for auto-skips, shared by every failure path (queue
+     * takeover, playlist start, player errors): several tracks failing
+     * back-to-back is never several dead songs. It is a bad network stretch
+     * or the resolver having a bad minute, so playback stops where it is
+     * instead of eating the rest of the playlist a few seconds at a time.
+     * The streak resets once a track plays audibly again (ticker). Every
+     * skip lands in the playback diagnostics ring with its reason.
+     */
+    private fun autoSkipShouldAdvance(
+        mediaId: String?,
+        failure: Throwable,
+    ): Boolean {
+        val http = (failure as? PlaybackException)?.httpStatusCodeOrNull() ?: 0
+        val streak = ++consecutiveSkipCount
+        PlaybackDiagnostics.event(
+            "Skip",
+            "auto-skip #$streak mediaId=${mediaId.orEmpty()} " +
+                "title=${_state.value.current?.title?.take(48) ?: "?"} http=$http " +
+                "err=${failure.javaClass.simpleName}: ${failure.message?.take(90) ?: "unknown"}",
+        )
+        if (streak >= MAX_CONSECUTIVE_AUTO_SKIPS) {
+            player.pause()
+            _state.update {
+                it.copy(
+                    isPlaying = false,
+                    isBuffering = false,
+                    error = "Several songs failed to load in a row, so playback stopped here. Tap play to retry.",
+                )
+            }
+            return false
+        }
+        return true
+    }
+
     internal fun scheduleUnavailableMediaSkip(
         failedIndex: Int,
         failedMediaId: String?,
@@ -5885,6 +5926,10 @@ class MusicPlayer @Inject constructor(
             return
         }
         player.pause()
+        if (!autoSkipShouldAdvance(failedMediaId, failure)) {
+            unavailableSkipJob = null
+            return
+        }
         unavailableSkipJob?.cancel()
         unavailableSkipJob = applicationScope.launch(Dispatchers.Main.immediate) {
             yield()
@@ -8912,9 +8957,9 @@ class MusicPlayer @Inject constructor(
     ) {
         PlaybackDiagnostics.event(
             "Stream",
-            "stage=$stage videoId=${track.videoId.orEmpty()} client=unresolved itag=-1 " +
-                "mime=unknown expiry=unknown retry=$retry http=${error.httpStatusCodeOrNull() ?: 0} " +
-                "error=${error.javaClass.simpleName}",
+            "stage=$stage title=${track.title.take(40)} videoId=${track.videoId.orEmpty()} " +
+                "retry=$retry http=${error.httpStatusCodeOrNull() ?: 0} " +
+                "error=${error.javaClass.simpleName}: ${error.message?.take(80) ?: "unknown"}",
         )
         android.util.Log.e(
             "MusicPlayer",
@@ -9260,6 +9305,8 @@ class MusicPlayer @Inject constructor(
         /** Signal-path report + stream-health sampling cadence while playing. */
         const val SIGNAL_PATH_TICK_MS = 1_000L
         const val MAX_PLAYBACK_RETRIES = 3
+        /** Stop auto-advancing after this many tracks failed back-to-back. */
+        const val MAX_CONSECUTIVE_AUTO_SKIPS = 3
         const val STARTUP_PROVIDER_RESOLVE_MS = 8_000L
         const val STARTUP_PROVIDER_PROBE_MS = 1_000L
         /** "Best quality first": how long the addon gets before YouTube plays. */

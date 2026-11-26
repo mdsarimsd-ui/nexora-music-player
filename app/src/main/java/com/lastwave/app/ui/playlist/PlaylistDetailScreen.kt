@@ -1572,7 +1572,7 @@ fun PlaylistDetailScreen(
 }
 
 @Composable
-private fun SelectionAddToPlaylistDialog(
+internal fun SelectionAddToPlaylistDialog(
     candidates: List<SavedPlaylist>,
     onDismiss: () -> Unit,
     onConfirm: (Set<Long>, String?) -> Unit,

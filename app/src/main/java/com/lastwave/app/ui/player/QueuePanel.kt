@@ -77,6 +77,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.ui.geometry.CornerRadius
@@ -273,6 +274,9 @@ import com.lastwave.app.data.lyrics.LyricsSyncType
 import kotlinx.coroutines.flow.update
 import com.lastwave.app.data.playlist.PlaylistRepository
 import com.lastwave.app.data.playlist.SavedPlaylist
+import com.lastwave.app.data.playlist.LOCAL_SONGS_MODE
+import com.lastwave.app.playback.toGeneratedTrack
+import com.lastwave.app.ui.playlist.SelectionAddToPlaylistDialog
 import com.lastwave.app.data.playlist.LIKED_SONGS_MODE
 import com.lastwave.app.playback.MusicPlayer
 import com.lastwave.app.playback.MusicPlayerState
@@ -349,6 +353,17 @@ internal fun QueuePanel(
     var menuIndex by remember { mutableStateOf<Int?>(null) }
     var edgeScrollJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var queueSortMenu by remember { mutableStateOf(false) }
+    // Musicolet-style queue selection: long-press a song to enter selection
+    // mode, tap songs to toggle, then add the whole batch to a playlist.
+    // The save button keeps a Mix takeover (Start Mix replaces the upcoming
+    // queue) recoverable as a real playlist in one tap.
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedKeys by remember { mutableStateOf(setOf<String>()) }
+    var selectionAddOpen by remember { mutableStateOf(false) }
+    var saveQueueOpen by remember { mutableStateOf(false) }
+    val playlistViewModel: com.lastwave.app.ui.playlist.PlaylistViewModel = hiltViewModel()
+    val playlistUi by playlistViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { runCatching { playlistViewModel.load() } }
     fun cancelEdgeScroll() {
         edgeScrollJob?.cancel()
         edgeScrollJob = null
@@ -415,7 +430,7 @@ internal fun QueuePanel(
     LaunchedEffect(state.currentIndex, state.queue.size) {
         if (draggingKey != null || state.queue.isEmpty()) return@LaunchedEffect
         if (System.currentTimeMillis() < userScrollHoldUntil) return@LaunchedEffect
-        val target = state.currentIndex.coerceIn(0, state.queue.size - 1)
+        val target = state.currentIndex.coerceIn(0, state.queue.size - 1) + 1
         runCatching { listState.animateScrollToItem(target) }
     }
     // True upcoming play order (shuffle/repeat aware). Under shuffle the list
@@ -469,9 +484,24 @@ internal fun QueuePanel(
                 }
             }
             IconButton(
+                onClick = { saveQueueOpen = true },
+                enabled = state.queue.isNotEmpty(),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = 0.14f)),
+            ) {
+                Icon(
+                    Icons.Filled.PlaylistAdd,
+                    "Save queue as playlist",
+                    tint = Color.White.copy(alpha = 0.90f),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(
                 onClick = {
                     userScrollHoldUntil = 0L
-                    scope.launch { listState.animateScrollToItem(state.currentIndex.coerceAtLeast(0)) }
+                    scope.launch { listState.animateScrollToItem(state.currentIndex.coerceAtLeast(0) + 1) }
                 },
                 enabled = state.currentIndex >= 0 && state.currentIndex < state.queue.size,
                 modifier = Modifier
@@ -627,6 +657,80 @@ internal fun QueuePanel(
             contentPadding = PaddingValues(bottom = bottomPadding),
             verticalArrangement = Arrangement.spacedBy(GroupGap),
         ) {
+            if (selectionMode) {
+                item(key = "queue_selection_bar") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f))
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${selectedKeys.size} selected",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { selectedKeys = queueKeys.toSet() }) {
+                            Text("All", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { selectionAddOpen = true }) {
+                            Text("Add to playlist", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(onClick = { selectionMode = false; selectedKeys = setOf() }) {
+                            Icon(Icons.Filled.Close, "Clear selection", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                }
+            } else {
+                val nowItem = state.queue.getOrNull(state.currentIndex)
+                if (nowItem != null) {
+                    item(key = "queue_now_card") {
+                        LiquidGlassSurface(
+                            onClick = {},
+                            glassModifier = Modifier.liquidGlassChrome(RoundedCornerShape(18.dp), LocalLiquidGlass.current),
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+                                    else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                PlayerArtwork(nowItem, Modifier.size(52.dp), 14.dp)
+                                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                    Text(
+                                        "NOW PLAYING",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                    )
+                                    Text(
+                                        nowItem.title,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        nowItem.artist,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                    )
+                                }
+                                Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
             itemsIndexed(
                 state.queue,
                 key = { index, _ -> queueKeys.getOrNull(index) ?: index.toString() },
@@ -701,7 +805,7 @@ internal fun QueuePanel(
                     androidx.compose.material3.SwipeToDismissBox(
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
-                        enableDismissFromEndToStart = !isQueueLocked && draggingKey == null,
+                        enableDismissFromEndToStart = !isQueueLocked && draggingKey == null && !selectionMode,
                         modifier = Modifier.fillMaxWidth(),
                         backgroundContent = {
                             if (dismissState.dismissDirection == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart) {
@@ -724,23 +828,52 @@ internal fun QueuePanel(
                         content = {
                             LiquidGlassSurface(
                                 glassModifier = Modifier.liquidGlassChrome(itemShape, LocalLiquidGlass.current),
-                                onClick = { player.seekToQueueItem(currentQueueKeys.indexOf(stableKey).takeIf { it >= 0 } ?: currentIndex) },
+                                onClick = {
+                                    if (selectionMode) {
+                                        selectedKeys = if (stableKey in selectedKeys) selectedKeys - stableKey else selectedKeys + stableKey
+                                    } else {
+                                        player.seekToQueueItem(currentQueueKeys.indexOf(stableKey).takeIf { it >= 0 } ?: currentIndex)
+                                    }
+                                },
                                 shape = itemShape,
-                                color = if (isCurrent) {
-                                    if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
-                                    else MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    if (LocalLiquidGlass.current) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.70f)
-                                    else MaterialTheme.colorScheme.surfaceContainerHighest
+                                color = when {
+                                    stableKey in selectedKeys ->
+                                        MaterialTheme.colorScheme.primary.copy(alpha = if (LocalLiquidGlass.current) 0.55f else 0.75f)
+                                    isCurrent -> {
+                                        if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+                                        else MaterialTheme.colorScheme.primaryContainer
+                                    }
+                                    else -> {
+                                        if (LocalLiquidGlass.current) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.70f)
+                                        else MaterialTheme.colorScheme.surfaceContainerHighest
+                                    }
                                 },
                                 contentColor = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
                                 else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Row(
-                                    Modifier.fillMaxWidth().padding(9.dp),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .pointerInput(stableKey, selectionMode) {
+                                            detectTapGestures(
+                                                onLongPress = {
+                                                    if (!selectionMode) {
+                                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        selectionMode = true
+                                                        selectedKeys = setOf(stableKey)
+                                                    }
+                                                },
+                                            )
+                                        }
+                                        .padding(9.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    if (stableKey in selectedKeys) {
+                                        Box(Modifier.width(30.dp), contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Filled.CheckCircle, "Selected", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                                        }
+                                    } else {
                                     Text(
                                         "${index + 1}",
                                         style = MaterialTheme.typography.labelSmall,
@@ -750,6 +883,7 @@ internal fun QueuePanel(
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.width(30.dp),
                                     )
+                                    }
                                     PlayerArtwork(item, Modifier.size(50.dp), 13.dp)
                                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                         Text(
@@ -795,6 +929,7 @@ internal fun QueuePanel(
                                                 .pointerInput(stableKey) {
                                                     detectDragGestures(
                                                         onDragStart = {
+                                                            if (selectionMode) return@detectDragGestures
                                                             val info = listState.layoutInfo.visibleItemsInfo
                                                                 .firstOrNull { it.key == stableKey } ?: return@detectDragGestures
                                                             draggingKey = stableKey
@@ -912,6 +1047,61 @@ internal fun QueuePanel(
         }
     }
 }
+
+    if (selectionAddOpen) {
+        SelectionAddToPlaylistDialog(
+            candidates = playlistUi.playlists.filter {
+                it.id >= 0L && it.mode != "youtube_remote" && it.mode != LOCAL_SONGS_MODE
+            },
+            onDismiss = { selectionAddOpen = false },
+            onConfirm = { ids, newTitle ->
+                val chosen = currentQueueKeys.mapIndexed { i, key ->
+                    if (key in selectedKeys) currentQueue.getOrNull(i)?.toGeneratedTrack() else null
+                }.filterNotNull()
+                if (chosen.isNotEmpty()) {
+                    playlistViewModel.addTracksToPlaylists(ids, newTitle, chosen)
+                }
+                selectionAddOpen = false
+                selectionMode = false
+                selectedKeys = setOf()
+            },
+        )
+    }
+
+    if (saveQueueOpen) {
+        var saveName by remember { mutableStateOf(state.sourceLabel.ifBlank { "My queue" }) }
+        AlertDialog(
+            onDismissRequest = { saveQueueOpen = false },
+            title = { Text("Save queue as playlist") },
+            text = {
+                Column {
+                    Text(
+                        "${state.queue.size} songs will be saved.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = saveName,
+                        onValueChange = { saveName = it },
+                        singleLine = true,
+                        label = { Text("Playlist name") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = saveName.isNotBlank() && state.queue.isNotEmpty(),
+                    onClick = {
+                        playlistViewModel.addTracksToPlaylists(emptySet(), saveName.trim(), currentQueue.map { it.toGeneratedTrack() })
+                        saveQueueOpen = false
+                    },
+                ) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { saveQueueOpen = false }) { Text("Cancel") } },
+        )
+    }
 
     menuIndex?.let { index ->
         val itemTrack = state.queue.getOrNull(index)

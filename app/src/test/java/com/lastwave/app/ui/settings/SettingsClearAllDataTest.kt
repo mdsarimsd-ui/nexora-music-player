@@ -155,6 +155,7 @@ class SettingsClearAllDataTest {
             downloadedTrackDao = downloadedTrackDao,
             podcastProgressStore = podcastProgressStore,
             appLocaleManager = appLocaleManager,
+            audioEffectsEngine = mockk(relaxed = true),
             playlistImportManager = playlistImportManager,
             innerTube = innerTube,
             appUpdateManager = appUpdateManager,

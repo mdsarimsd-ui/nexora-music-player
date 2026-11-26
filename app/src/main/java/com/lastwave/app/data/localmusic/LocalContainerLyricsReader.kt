@@ -35,8 +35,20 @@ object LocalContainerLyricsReader {
                 if (urlOrUri.startsWith("content://")) {
                     context.contentResolver.openInputStream(Uri.parse(urlOrUri))
                 } else {
-                    val path = urlOrUri.removePrefix("file://")
-                    File(path).takeIf { it.isFile && it.canRead() }?.inputStream()
+                    // The stored local path can be percent-encoded ("%20" for
+                    // spaces) while the file on disk keeps its real characters.
+                    // Try the same spellings playback tries before giving up.
+                    val raw = urlOrUri.removePrefix("file://").removePrefix("local:")
+                    listOf(
+                        raw,
+                        runCatching { java.net.URLDecoder.decode(raw, "UTF-8") }.getOrNull(),
+                        raw.replace("%20", " "),
+                        raw.replace(" ", "%20"),
+                    ).filterNotNull().distinct().forEach { path ->
+                        val f = File(path)
+                        if (f.isFile && f.canRead()) return@runCatching f.inputStream()
+                    }
+                    null
                 }
             }
             openStream()?.use { raw ->

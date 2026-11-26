@@ -35,6 +35,12 @@ class SpatializationStage {
     private var alternationPhase = 0.0
     private var reverbRateHz = 0
 
+    /** Frames left in the engage ramp that fades the effect in after a mode change. */
+    private var engageRampFrames = 0
+    private var engageRampTotal = 0
+    /** Set on a mode change; resolved to a real ramp length once the sample rate is known. */
+    private var pendingEngageRamp = false
+
     private var combDelay = IntArray(0)
     private var combIdx = IntArray(0)
     private var combBuf = emptyArray<FloatArray>()
@@ -119,9 +125,17 @@ class SpatializationStage {
             shadowState = 0f
             itdIdx = 0
             if (itdBuf.isNotEmpty()) java.util.Arrays.fill(itdBuf, 0f)
+            if (mode != SpatializationMode.OFF) pendingEngageRamp = true
         }
         if (mode == SpatializationMode.OFF || channelCount != 2 || sampleRateHz <= 0) return
         ensureReverb(sampleRateHz)
+        if (pendingEngageRamp) {
+            // Poweramp-style engage: the effect fades in over 250 ms so
+            // toggling 8D / 16D or switching between them never clicks.
+            engageRampTotal = (0.25 * sampleRateHz).toInt().coerceIn(1, sampleRateHz)
+            engageRampFrames = engageRampTotal
+            pendingEngageRamp = false
+        }
         val originalOrder = output.order()
         try {
             output.order(ByteOrder.LITTLE_ENDIAN)
@@ -197,8 +211,14 @@ class SpatializationStage {
                 val wetMix = 0.30f
                 val outL = ((l * dry + coreL + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 val outR = ((r * dry + coreR + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
-                output.putFloat(pos, outL)
-                output.putFloat(pos + Float.SIZE_BYTES, outR)
+                // Fade the whole effect in over the engage ramp: ramp 0 is
+                // plain passthrough, 1 is the full 8D / 16D mix above.
+                val ramp = if (engageRampFrames > 0) {
+                    engageRampFrames--
+                    1f - engageRampFrames.toFloat() / engageRampTotal.toFloat()
+                } else 1f
+                output.putFloat(pos, (l + (outL - l) * ramp).coerceIn(-1.0f, 1.0f))
+                output.putFloat(pos + Float.SIZE_BYTES, (r + (outR - r) * ramp).coerceIn(-1.0f, 1.0f))
                 pos += 2 * Float.SIZE_BYTES
             }
             panRad = theta
@@ -212,6 +232,9 @@ class SpatializationStage {
         panRad = 0.0
         alternationPhase = 0.0
         shadowState = 0f
+        engageRampFrames = 0
+        engageRampTotal = 0
+        pendingEngageRamp = false
         itdBuf = FloatArray(0)
         itdIdx = 0
         itdMaxSamples = 0

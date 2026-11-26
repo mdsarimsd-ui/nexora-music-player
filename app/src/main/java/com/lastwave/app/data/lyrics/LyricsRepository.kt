@@ -280,6 +280,53 @@ class LyricsRepository @Inject constructor(
         onPartialResult: suspend (LyricsResult.Success) -> Unit = {},
         /** Internal guard: the filename-derived retry below must not recurse. */
         nameRetry: Boolean = false,
+        /** Internal guard: the mashup-title variant retry below must not recurse. */
+        variantRetry: Boolean = false,
+    ): LyricsResult {
+        val resolved = resolveLyrics(
+            title = title,
+            artist = artist,
+            album = album,
+            durationSeconds = durationSeconds,
+            forceRefresh = forceRefresh,
+            wordByWord = wordByWord,
+            videoId = videoId,
+            isrc = isrc,
+            localLrcPath = localLrcPath,
+            localAudioUrl = localAudioUrl,
+            overrideProvider = overrideProvider,
+            excludedProviders = excludedProviders,
+            onPartialResult = onPartialResult,
+            nameRetry = nameRetry,
+            variantRetry = variantRetry,
+        )
+        // Musicolet-style grace: lyrics found but untimed are the common
+        // miss behind "not synced with the voice". Spread the lines across
+        // the song, weighted by line length, so the highlight moves with
+        // the music instead of sitting still.
+        return if (resolved is LyricsResult.Success) {
+            approximateSync(resolved, durationSeconds)
+        } else {
+            resolved
+        }
+    }
+
+    private suspend fun resolveLyrics(
+        title: String,
+        artist: String,
+        album: String? = null,
+        durationSeconds: Int? = null,
+        forceRefresh: Boolean = false,
+        wordByWord: Boolean = true,
+        videoId: String? = null,
+        isrc: String? = null,
+        localLrcPath: String? = null,
+        localAudioUrl: String? = null,
+        overrideProvider: com.lastwave.app.data.local.LyricsProvider? = null,
+        excludedProviders: Set<com.lastwave.app.data.local.LyricsProvider> = emptySet(),
+        onPartialResult: suspend (LyricsResult.Success) -> Unit = {},
+        nameRetry: Boolean = false,
+        variantRetry: Boolean = false,
     ): LyricsResult = withContext(Dispatchers.Default) {
         val skipLocal = (overrideProvider != null && overrideProvider != com.lastwave.app.data.local.LyricsProvider.AUTO) ||
             excludedProviders.isNotEmpty()
@@ -725,7 +772,97 @@ class LyricsRepository @Inject constructor(
                 if (retry is LyricsResult.Success) return@withContext retry
             }
         }
+        // Last pass for mixed-up titles: mashups, "|"-split uploads and
+        // slowed+reverb edits name the edit, not the song, so the search
+        // finds nothing. Retry the whole chain with each cleaned variant;
+        // the cache prevents repeats and variantRetry stops this nesting.
+        if (!variantRetry) {
+            for (variant in titleVariants(title)) {
+                val retry = getLyrics(
+                    title = variant,
+                    artist = artist,
+                    album = album,
+                    durationSeconds = durationSeconds,
+                    forceRefresh = forceRefresh,
+                    wordByWord = wordByWord,
+                    videoId = videoId,
+                    isrc = null,
+                    localLrcPath = localLrcPath,
+                    localAudioUrl = localAudioUrl,
+                    overrideProvider = overrideProvider,
+                    excludedProviders = excludedProviders,
+                    onPartialResult = onPartialResult,
+                    nameRetry = nameRetry,
+                    variantRetry = true,
+                )
+                if (retry is LyricsResult.Success) return@withContext retry
+            }
+        }
         LyricsResult.Empty
+    }
+
+    /**
+     * Search-title variants for the last-chance retry above. A mashup or
+     * remix upload names the edit ("Ruposh Mashup | Teri Nazron Ke Sadqe"),
+     * so try the cleaned title and each split half.
+     */
+    private fun titleVariants(raw: String): List<String> {
+        val base = forSearchTitle(raw)
+        val out = LinkedHashSet<String>()
+        fun add(s: String) {
+            val t = Regex("\s+").replace(s, " ").trim().trimEnd(',', '-', '\u2013', '\u2014').trim()
+            if (t.length >= 3 && !t.equals(base.trim(), ignoreCase = true)) out.add(t)
+        }
+        var cleaned = base.replace(
+            Regex("""(?i)\b(mashup|megamix|mega\s*mix|mixtape|lofi|low\s*fi|slowed(?:\s*\+?\s*(?:and|&|\+)?\s*reverb)?|reverb(?:ed)?|sped\s*up|speed\s*up|nightcore|remix(?:ed)?|8d|16d|cover|flip|bootleg|vip)\b"""),
+            " ",
+        )
+        cleaned = cleaned.replace(Regex("""\s*[|/\u2022\u00b7\u00d7]+\s*"""), " ")
+        add(cleaned)
+        for (part in base.split(Regex("""\s*[|/\u2022\u00b7\u00d7]+\s*"""), Regex("""\s+[xX\u00d7]\s+"""), Regex("""\s+&\s+"""))) {
+            add(forSearchTitle(part))
+        }
+        return out.toList().take(4)
+    }
+
+    /**
+     * Turns untimed lyrics (plain text from any source) into approximate
+     * line sync: the lines are spread across the song, weighted by their
+     * length, starting just after the usual intro. Not word-accurate, but
+     * the highlight follows the music instead of freezing on one line.
+     */
+    private fun approximateSync(result: LyricsResult.Success, durationSeconds: Int?): LyricsResult.Success {
+        if (result.isSynced || result.isWordSynced || result.isInstrumental) return result
+        val total = durationSeconds ?: return result
+        if (total < 30) return result
+        val texts = if (result.lines.isNotEmpty()) {
+            result.lines.map { it.text.trim() }.filter { it.isNotEmpty() }
+        } else {
+            result.plainLyrics?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+        }
+        if (texts.size < 2) return result
+        val totalMs = total * 1000L
+        val startMs = (totalMs * 5 / 100).coerceAtMost(25_000L)
+        val endMs = (totalMs * 97 / 100).coerceAtLeast(startMs + 2000)
+        val weights = texts.map { (it.length + 8).toDouble() }
+        val sum = weights.sum()
+        val span = (endMs - startMs).toDouble()
+        var cursor = startMs.toDouble()
+        val timed = texts.mapIndexed { i, text ->
+            val lineStart = cursor.toLong()
+            cursor += span * (weights[i] / sum)
+            val lineEnd = cursor.toLong().coerceAtMost(endMs)
+            LyricLine(
+                timeMs = lineStart,
+                durationMs = (lineEnd - lineStart).coerceAtLeast(200L),
+                text = text,
+            )
+        }
+        return result.copy(
+            lines = timed,
+            isSynced = true,
+            source = result.source?.let { "$it \u00b7 approx" } ?: "approx sync",
+        )
     }
 
     /**

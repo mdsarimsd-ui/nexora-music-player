@@ -181,6 +181,7 @@ import com.lastwave.app.ui.shell.FloatingNavDefaults
 import com.lastwave.app.ui.podcast.PodcastShowRow
 import com.lastwave.app.data.feed.TrendingInstagramEntry
 import androidx.compose.ui.draw.clip
+import com.lastwave.app.data.feed.SongRows
 
 private fun LazyListScope.feedSectionItem(
     key: Any,
@@ -246,6 +247,7 @@ fun FeedScreen(
     val previewQueues by viewModel.previewQueues.collectAsStateWithLifecycle()
     val allTimeHits by viewModel.allTimeHits.collectAsStateWithLifecycle()
     val instagramTrending by viewModel.instagramTrending.collectAsStateWithLifecycle()
+    val songRows by viewModel.songRows.collectAsStateWithLifecycle()
     fun isSectionVisible(section: HomeSection) = section.id !in hiddenSections
     val snackbarHostState = remember { SnackbarHostState() }
     val hasFeedContent = state.isChipActive || state.feedData.hasContent
@@ -654,7 +656,7 @@ fun FeedScreen(
                     state.feedData.freshFinds, state.feedData.jumpBackIn, state.feedData.mixes,
                     individualTopArtists, state.feedData.heavyRotation, state.feedData.recentAlbums,
                     state.feedData.charts, combinedNewReleases, state.feedData.friends,
-                    remainingNativeShelves, resolveNativeShelf, state.feedData.spotlight,
+                    remainingNativeShelves, resolveNativeShelf, state.feedData.spotlight, songRows,
                 ) {
                     if (state.isChipActive) return@remember emptyList<String>() to emptyMap<String, HomeShelf>()
 
@@ -663,9 +665,11 @@ fun FeedScreen(
                     fun ytShelf(key: String): HomeShelf? =
                         if (key in ytResolved) ytResolved[key] else resolveNativeShelf(key).also { ytResolved[key] = it }
 
-                    // Home rebuild: the approved mockup keeps exactly four rows.
+                    // Home rebuild: song-only rows, Hindi and English, many of them.
                     val allCandidateKeys = listOf(
-                        "trending_instagram", "trending_songs", "global_hits", "all_time_hits",
+                        "trending_instagram", "trending_songs", "row:hindi", "row:english",
+                        "global_hits", "row:punjabi", "row:party", "row:romantic",
+                        "all_time_hits", "row:90s", "row:sad",
                     )
                     val candidateKeys = allCandidateKeys.filter { key ->
                         key != "hero_greeting" && key != "infinite_radio" && key != "quick_tiles" &&
@@ -685,7 +689,10 @@ fun FeedScreen(
                     })
                     val (pinned, unpinned) = sorted.partition { it in pinnedHomeSections }
                     val ordered = pinned + unpinned
-                    val available = ordered
+                    val available = ordered.filter { key ->
+                        if (key.startsWith("row:")) songRows[key.removePrefix("row:")].orEmpty().isNotEmpty()
+                        else true
+                    }
 
                     // Two keys can point at the same shelf (old saved key vs live title,
                     // different case, fuzzy match). Keep one per shelf, exact title first.
@@ -1373,6 +1380,39 @@ fun FeedScreen(
                                         }
                                     }
                                 }
+                                sectionKey.startsWith("row:") -> {
+                                    val rowId = sectionKey.removePrefix("row:")
+                                    val rowDef = SongRows.DEFS.firstOrNull { it.id == rowId }
+                                    val rowTracks = songRows[rowId].orEmpty()
+                                    if (rowDef != null && rowTracks.isNotEmpty()) {
+                                        feedSectionItem(key = sectionKey, contentType = sectionKey) {
+                                            HomeContainerSection(shape = getContainerShape(rowId)) {
+                                                FeedSectionHeader(
+                                                    title = rowDef.title,
+                                                    subtitle = rowDef.subtitle,
+                                                    onShuffleClick = { viewModel.shuffleTracksQueue(rowTracks, rowDef.title) },
+                                                    onLongClick = { sectionMenuTarget = rowId to rowDef.title },
+                                                )
+                                                LazyRow(
+                                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                    modifier = Modifier.padding(top = 12.dp),
+                                                ) {
+                                                    itemsIndexed(rowTracks) { _, track ->
+                                                        FeedMediaCard(
+                                                            title = track.title,
+                                                            subtitle = track.artist,
+                                                            artworkUrl = track.artworkUrl,
+                                                            fallbackIcon = Icons.Filled.MusicNote,
+                                                            onClick = { viewModel.playTrack(track, rowDef.title) },
+                                                            onPlayClick = { viewModel.playTrack(track, rowDef.title) },
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 sectionKey == "trending_instagram" -> {
                                     feedSectionItem(key = "trending_instagram", contentType = "trending_instagram") {
                                         HomeContainerSection(
@@ -1402,6 +1442,7 @@ fun FeedScreen(
                                 sectionKey == "trending_songs" -> {
                                     feedSectionItem(key = "trending_songs", contentType = "trending_songs") {
                                         val trendingSongs = state.feedData.charts.take(25)
+                                            .ifEmpty { songRows["trending"].orEmpty() }
                                         HomeContainerSection(
                                             shape = getContainerShape("trending_songs"),
                                         ) {
@@ -1433,6 +1474,7 @@ fun FeedScreen(
                                 sectionKey == "global_hits" -> {
                                     feedSectionItem(key = "global_hits", contentType = "global_hits") {
                                         val globalHits = state.feedData.charts.drop(25).take(25)
+                                            .ifEmpty { songRows["global"].orEmpty() }
                                         HomeContainerSection(
                                             shape = getContainerShape("global_hits"),
                                         ) {

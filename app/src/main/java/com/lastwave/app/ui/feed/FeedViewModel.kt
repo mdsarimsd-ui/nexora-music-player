@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.lastwave.app.data.feed.InstagramTrending
 import com.lastwave.app.data.feed.TrendingInstagramEntry
+import com.lastwave.app.data.feed.SongRows
 
 @Immutable
 data class FeedUiState(
@@ -124,6 +125,9 @@ class FeedViewModel @Inject constructor(
     private val _allTimeHits = MutableStateFlow<List<YouTubeMusicTrack>>(emptyList())
     val allTimeHits: StateFlow<List<YouTubeMusicTrack>> = _allTimeHits.asStateFlow()
 
+    private val _songRows = MutableStateFlow<Map<String, List<YouTubeMusicTrack>>>(emptyMap())
+    val songRows: StateFlow<Map<String, List<YouTubeMusicTrack>>> = _songRows.asStateFlow()
+
     private val _instagramTrending = MutableStateFlow<List<TrendingInstagramEntry>>(emptyList())
     val instagramTrending: StateFlow<List<TrendingInstagramEntry>> = _instagramTrending.asStateFlow()
 
@@ -185,6 +189,13 @@ class FeedViewModel @Inject constructor(
             val hits = runCatching { innerTube.searchSongs("all time hits", limit = 25) }
                 .getOrDefault(emptyList())
             _allTimeHits.value = hits
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val results = SongRows.DEFS.map { def ->
+                def.id to runCatching { innerTube.searchSongs(def.query, limit = 25) }
+                    .getOrDefault(emptyList())
+            }
+            _songRows.value = results.toMap().filterValues { it.isNotEmpty() }
         }
         viewModelScope.launch(Dispatchers.IO) {
             val resolved = InstagramTrending.CURRENT.map { entry ->

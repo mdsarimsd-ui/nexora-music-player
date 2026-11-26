@@ -43,11 +43,19 @@ class SpatializationStage {
     private var allpassIdx = IntArray(0)
     private var allpassBuf = emptyArray<FloatArray>()
 
-    /** One full circle every 10 s for 8D; no circle for 16D. */
+    /** Head-shadow low-pass state for the panned core (see process()). */
+    private var shadowState = 0f
+
+    /** Mono ring buffer feeding the per-ear interaural delays. */
+    private var itdBuf = FloatArray(0)
+    private var itdIdx = 0
+    private var itdMaxSamples = 0
+
+    /** One full circle every 8 s for 8D; no circle for 16D. */
     private val rotationHz: Double
         get() = if (mode == SpatializationMode.D8) 1.0 / 8.0 else 0.0
 
-    /** 16D swings between the ears at 0.45 Hz (about every 1.1 s). */
+    /** 16D swings between the ears at 0.7 Hz (about every 1.4 s). */
     private val alternationHz: Double
         get() = if (mode == SpatializationMode.D16) 0.7 else 0.0
 
@@ -68,6 +76,12 @@ class SpatializationStage {
             .toIntArray()
         allpassIdx = IntArray(allpassDelay.size)
         allpassBuf = Array(allpassDelay.size) { FloatArray(allpassDelay[it]) }
+        // Max interaural time difference of 0.6 ms: the physical limit of
+        // ear-to-ear arrival delay a real head produces.
+        itdMaxSamples = (0.0006 * sampleRateHz).toInt().coerceIn(8, 96)
+        itdBuf = FloatArray(itdMaxSamples + 1)
+        itdIdx = 0
+        java.util.Arrays.fill(itdBuf, 0f)
     }
 
     /** One-sample Schroeder reverb (4 combs + 2 allpass) on the mono source. */
@@ -102,6 +116,9 @@ class SpatializationStage {
             lastAppliedMode = mode
             panRad = 0.0
             alternationPhase = 0.0
+            shadowState = 0f
+            itdIdx = 0
+            if (itdBuf.isNotEmpty()) java.util.Arrays.fill(itdBuf, 0f)
         }
         if (mode == SpatializationMode.OFF || channelCount != 2 || sampleRateHz <= 0) return
         ensureReverb(sampleRateHz)
@@ -121,11 +138,18 @@ class SpatializationStage {
                 val wet = reverb(mono)
                 val gL: Float
                 val gR: Float
+                // Position along the left-right axis (-1 far left .. +1 far
+                // right) and how far behind the head the source sits (0..1).
+                val lateral: Float
+                var behindness = 0f
                 if (rotationPerFrame > 0.0) {
                     // Full circle around the head. The original stereo bed
                     // stays in underneath so the mix never collapses to mono.
                     gL = cos(theta).toFloat()
                     gR = sin(theta).toFloat()
+                    lateral = gL
+                    // Front half of the circle is the positive sine side.
+                    behindness = (-sin(theta)).toFloat().coerceIn(0f, 1f)
                     theta += rotationPerFrame
                     if (theta > TAU) theta %= TAU
                 } else {
@@ -135,17 +159,43 @@ class SpatializationStage {
                     val tri = 0.5 - 0.5 * cos(alt)
                     gL = cos(0.5 * PI * tri).toFloat()
                     gR = sin(0.5 * PI * tri).toFloat()
+                    lateral = (2.0 * tri - 1.0).toFloat()
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
                 val earFloor = 0.08f
                 val panL = earFloor + (1f - earFloor) * gL.coerceAtLeast(0f)
                 val panR = earFloor + (1f - earFloor) * gR.coerceAtLeast(0f)
+
+                // Head shadow: as the source passes behind the head its high
+                // frequencies lose the direct path, so the panned core dims
+                // toward a warm one-pole low-pass there. This is what turns
+                // the flat left-right circle into something that passes
+                // behind you. Applied before the ring write so both ears
+                // share one shadow state and the overall energy stays put.
+                val shadowAlpha = (1.0 - 0.72 * behindness).toFloat()
+                shadowState += shadowAlpha * (mono - shadowState)
+
+                // Interaural time difference: the ear on the far side of the
+                // swing hears the panned core up to 0.6 ms later, the exact
+                // cue human hearing uses to judge direction. Per-ear delayed
+                // taps of the mono ring replace the shared pan core.
+                if (itdBuf.isNotEmpty()) {
+                    itdBuf[itdIdx] = shadowState
+                }
+                val delayL = (itdMaxSamples * lateral.coerceAtLeast(0f)).toInt()
+                val delayR = (itdMaxSamples * (-lateral).coerceAtLeast(0f)).toInt()
+                val n = itdBuf.size
+                val idxL = (itdIdx - delayL + n) % n
+                val idxR = (itdIdx - delayR + n) % n
+                val coreL = (if (n > 0) itdBuf[idxL] else mono) * panL * panDepth
+                val coreR = (if (n > 0) itdBuf[idxR] else mono) * panR * panDepth
+                itdIdx = if (n > 0) (itdIdx + 1) % n else 0
+
                 val dry = 0.35f
-                val panDepth = 0.85f
                 val wetMix = 0.30f
-                val outL = ((l * dry + mono * panL * panDepth + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
-                val outR = ((r * dry + mono * panR * panDepth + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
+                val outL = ((l * dry + coreL + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
+                val outR = ((r * dry + coreR + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 output.putFloat(pos, outL)
                 output.putFloat(pos + Float.SIZE_BYTES, outR)
                 pos += 2 * Float.SIZE_BYTES
@@ -160,6 +210,10 @@ class SpatializationStage {
     fun reset() {
         panRad = 0.0
         alternationPhase = 0.0
+        shadowState = 0f
+        itdBuf = FloatArray(0)
+        itdIdx = 0
+        itdMaxSamples = 0
         reverbRateHz = 0
         combBuf = emptyArray()
         allpassBuf = emptyArray()

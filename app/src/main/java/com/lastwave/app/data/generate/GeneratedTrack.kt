@@ -351,7 +351,7 @@ object LocalAudioFormats {
         if (url.isNullOrBlank()) return null
         if (url.startsWith("http://") || url.startsWith("https://")) return null
         if (url.contains("tidal_mpd") || url.contains("segdrm_mpd")) return null
-        val clean = url.removePrefix("file://")
+        val clean = url.removePrefix("file://").removePrefix("local:")
         if (clean.startsWith("/") || clean.startsWith("content://") || url.startsWith("content://")) {
             return if (url.startsWith("content://")) url else clean
         }

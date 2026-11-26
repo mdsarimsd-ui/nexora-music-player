@@ -49,7 +49,13 @@ class LrclibLyricsApi @Inject constructor(
         album: String? = null,
         durationSeconds: Int? = null,
     ): LrclibRecord? = withContext(Dispatchers.IO) {
-        if (title.isBlank() || artist.isBlank()) return@withContext null
+        if (title.isBlank()) return@withContext null
+        // Local files often carry a song name and no artist at all. /api/get
+        // requires both, so go straight to a title-only search instead of
+        // silently returning nothing for every local song without tags.
+        if (artist.isBlank()) {
+            return@withContext searchLyrics(title, "", durationSeconds, rawTitle = title)
+        }
 
         // 1. Exact matches, strictest first so a correct album/duration still
         // pins the right version (studio vs live/remix).
@@ -102,7 +108,7 @@ class LrclibLyricsApi @Inject constructor(
 
         val request = Request.Builder()
             .url(urlBuilder.build())
-            .header("User-Agent", "LastWave-Android/1.0 (https://github.com/clash-projects/lastwave)")
+            .header("User-Agent", "Nexora-Android/5.6 (https://github.com/mdsarimsd-ui/nexora-music-player)")
             .build()
 
         return try {
@@ -125,11 +131,11 @@ class LrclibLyricsApi @Inject constructor(
         rawTitle: String = title,
     ): LrclibRecord? {
         val urlBuilder = "https://lrclib.net/api/search".toHttpUrlOrNull()?.newBuilder() ?: return null
-        urlBuilder.addQueryParameter("q", "$artist $title".trim())
+        urlBuilder.addQueryParameter("q", listOf(artist, title).filter { it.isNotBlank() }.joinToString(" ").trim())
 
         val request = Request.Builder()
             .url(urlBuilder.build())
-            .header("User-Agent", "LastWave-Android/1.0 (https://github.com/clash-projects/lastwave)")
+            .header("User-Agent", "Nexora-Android/5.6 (https://github.com/mdsarimsd-ui/nexora-music-player)")
             .build()
 
         return try {
@@ -148,7 +154,10 @@ class LrclibLyricsApi @Inject constructor(
                 val matched = list.mapNotNull { candidate ->
                     val candArtist = cleanArtistName(candidate.artistName ?: "")
                     val reqArtist = cleanArtistName(artist)
-                    if (!artistMatches(candArtist, reqArtist)) return@mapNotNull null
+                    // Title-only requests (artist unknown, e.g. a local file
+                    // named "Song.mp3"): the title/version/duration gates
+                    // below decide the match, the artist gate is skipped.
+                    if (reqArtist.isNotBlank() && !artistMatches(candArtist, reqArtist)) return@mapNotNull null
 
                     val candRawTitle = candidate.trackName ?: candidate.name ?: ""
                     // Never serve the wrong recording: a live/remix/cover tag

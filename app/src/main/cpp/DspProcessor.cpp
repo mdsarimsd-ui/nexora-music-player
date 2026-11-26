@@ -42,6 +42,12 @@ constexpr std::int32_t kEqCoefficientIntervalFrames = 128;
 constexpr std::int32_t kEqHeadroomIntervalFrames = 1024;
 // Optimal Q = sqrt(2) eliminates resonant ripple between 2/3-octave ISO bands for studio-grade smoothness.
 constexpr double kEqQ = 1.4142135623730951;
+// Musicolet/Poweramp-style proportional Q: a band tightens as its gain
+// magnitude grows, so a big boost stays punchy instead of smearing half the
+// spectrum. Neutral at 0 dB and capped so extreme settings stay musical.
+inline double eqBandQFor(double gainDb) noexcept {
+    return std::min(kEqQ * (1.0 + std::abs(gainDb) / 8.0), 6.0);
+}
 // -0.5 dBFS ceiling protects against true-peak clipping while maintaining high dynamic impact.
 constexpr float kOutputCeiling = 0.944060876F;
 // -1.5 dBFS soft-knee threshold: perfectly linear below this.
@@ -182,7 +188,7 @@ void DspProcessor::configure(double sampleRate) noexcept {
             : 0.0F;
         if (std::abs(currentEqGainsDb_[band]) >= 0.0005F) {
             equalizerBands_[band] = Biquad::peaking(
-                sampleRate_, kEqFrequenciesHz[band], kEqQ, currentEqGainsDb_[band]);
+                sampleRate_, kEqFrequenciesHz[band], eqBandQFor(currentEqGainsDb_[band]), currentEqGainsDb_[band]);
             activeEqualizerBands_ |= static_cast<std::uint16_t>(1U << band);
         } else {
             equalizerBands_[band] = Biquad{};
@@ -472,7 +478,7 @@ void DspProcessor::process(
                     coefficientsChanged = coefficientsChanged || bandChanged;
                     if (bandChanged) {
                         equalizerBands_[band].setPeaking(
-                            sampleRate_, kEqFrequenciesHz[band], kEqQ, currentEqGainsDb_[band]);
+                            sampleRate_, kEqFrequenciesHz[band], eqBandQFor(currentEqGainsDb_[band]), currentEqGainsDb_[band]);
                     }
                     if (std::abs(currentEqGainsDb_[band]) >= 0.0005F ||
                         std::abs(targetGain) >= 0.0005F) {

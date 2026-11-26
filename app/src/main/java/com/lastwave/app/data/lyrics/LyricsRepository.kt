@@ -278,6 +278,8 @@ class LyricsRepository @Inject constructor(
         overrideProvider: com.lastwave.app.data.local.LyricsProvider? = null,
         excludedProviders: Set<com.lastwave.app.data.local.LyricsProvider> = emptySet(),
         onPartialResult: suspend (LyricsResult.Success) -> Unit = {},
+        /** Internal guard: the filename-derived retry below must not recurse. */
+        nameRetry: Boolean = false,
     ): LyricsResult = withContext(Dispatchers.Default) {
         val skipLocal = (overrideProvider != null && overrideProvider != com.lastwave.app.data.local.LyricsProvider.AUTO) ||
             excludedProviders.isNotEmpty()
@@ -695,7 +697,75 @@ class LyricsRepository @Inject constructor(
         }
 
         // 5. FALLBACK: If all fail, return Empty (no lyrics)
+        // Local files whose tags are missing or dirty (the title/artist come
+        // from the file name) get one more pass: parse the file name into
+        // song and artist names and search again. This is how local songs in
+        // any language get lyrics when their metadata never matched.
+        if (!nameRetry && !localAudioUrl.isNullOrBlank()) {
+            val (parsedTitle, parsedArtist) = parseAudioFileName(localAudioUrl)
+            val titleChanged = parsedTitle.isNotBlank() && !parsedTitle.equals(title.trim(), ignoreCase = true)
+            val artistChanged = parsedArtist.isNotBlank() && !parsedArtist.equals(artist.trim(), ignoreCase = true)
+            if (titleChanged || artistChanged) {
+                val retry = getLyrics(
+                    title = parsedTitle.ifBlank { title },
+                    artist = parsedArtist.ifBlank { artist },
+                    album = album,
+                    durationSeconds = durationSeconds,
+                    forceRefresh = forceRefresh,
+                    wordByWord = wordByWord,
+                    videoId = null,
+                    isrc = null,
+                    localLrcPath = localLrcPath,
+                    localAudioUrl = localAudioUrl,
+                    overrideProvider = overrideProvider,
+                    excludedProviders = excludedProviders,
+                    onPartialResult = onPartialResult,
+                    nameRetry = true,
+                )
+                if (retry is LyricsResult.Success) return@withContext retry
+            }
+        }
         LyricsResult.Empty
+    }
+
+    /**
+     * Parses a local audio file name into (title, artist) guesses for the
+     * lyrics retry above. Handles the common layouts: "Artist - Title",
+     * "Artist – Title", "01 - Title", "01. Title", underscores as spaces,
+     * and the YouTube-junk suffixes "(Official Video)" / "[Lyrics]" etc.
+     * Returns empty artist when the name carries no separator: the LRCLIB
+     * title-only search then matches on the song name and duration.
+     */
+    private fun parseAudioFileName(localAudioUrl: String?): Pair<String, String> {
+        val raw = localAudioUrl.orEmpty()
+            .removePrefix("file://")
+            .removePrefix("local:")
+        if (raw.isBlank() || raw.startsWith("content:")) return "" to ""
+        var name = raw.substringAfterLast('/').substringAfterLast('\\').substringBeforeLast('.')
+        if (name.isBlank()) return "" to ""
+        name = name.replace('_', ' ')
+        // Packaging junk that never names a song.
+        val junk = listOf(
+            "(official video)", "(official music video)", "(official audio)", "(official)",
+            "[official video]", "[official music video]", "[official audio]", "[official]",
+            "(lyrics)", "(lyric video)", "(audio)", "[lyrics]", "[audio]",
+            "(video)", "(hd)", "(hq)", "(4k)", "(full song)", "(visualizer)",
+        )
+        for (tag in junk) name = name.replace(tag, "", ignoreCase = true)
+        // Leading track number: "01 - Title", "01. Title", "07 Title".
+        name = name.replace(Regex("^\\s*\\d{1,3}\\s*[-.\\]]\\s*"), " ").trim()
+        name = Regex("\\s+").replace(name, " ").trim()
+        if (name.isBlank()) return "" to ""
+        val separators = listOf(" - ", " – ", " — ", " _ ")
+        for (sep in separators) {
+            val idx = name.indexOf(sep)
+            if (idx in 1 until name.length - sep.length) {
+                val artist = name.substring(0, idx).trim()
+                val title = name.substring(idx + sep.length).trim()
+                if (artist.isNotBlank() && title.isNotBlank()) return title to artist
+            }
+        }
+        return name to ""
     }
 
     /** LRCLIB attempt shared by the preferred-first path and the fallback

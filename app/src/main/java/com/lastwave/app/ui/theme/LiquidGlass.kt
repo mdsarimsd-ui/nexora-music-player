@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.CornerRadius
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -571,9 +571,9 @@ fun Modifier.drawInteractiveGlass(
             },
             onDrawSurface = {
                 val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
-                val scrimBoost = if (glassStyle == GlassStyle.BOLD) 0.12f else 0f
+                val scrimBoost = if (GlassTheme.style == GlassStyle.BOLD) 0.12f else 0f
                 drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken + scrimBoost))
-                if (glassStyle == GlassStyle.CHROME) {
+                if (GlassTheme.style == GlassStyle.CHROME) {
                     drawRect(
                         brush = Brush.linearGradient(
                             colors = listOf(

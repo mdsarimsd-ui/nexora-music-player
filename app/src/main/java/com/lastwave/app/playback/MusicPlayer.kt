@@ -5883,6 +5883,26 @@ class MusicPlayer @Inject constructor(
     }
 
     /**
+     * Full failure description for the diagnostics ring: the exception chain,
+     * not just the top message. ExoPlayer wraps real causes ("Source error"
+     * hides FileNotFoundException vs permission vs codec), and the ring must
+     * show which one it was.
+     */
+    private fun describePlaybackFailure(failure: Throwable): String {
+        val parts = StringBuilder(failure.javaClass.simpleName)
+        failure.message?.take(90)?.let { parts.append(": ").append(it) }
+        var cause: Throwable? = failure.cause
+        var depth = 0
+        while (cause != null && depth < 4) {
+            parts.append(" <- ").append(cause.javaClass.simpleName)
+            cause.message?.take(90)?.let { parts.append(": ").append(it) }
+            cause = cause.cause
+            depth++
+        }
+        return parts.toString()
+    }
+
+    /**
      * Circuit breaker for auto-skips, shared by every failure path (queue
      * takeover, playlist start, player errors): several tracks failing
      * back-to-back is never several dead songs. It is a bad network stretch
@@ -5901,7 +5921,7 @@ class MusicPlayer @Inject constructor(
             "Skip",
             "auto-skip #$streak mediaId=${mediaId.orEmpty()} " +
                 "title=${_state.value.current?.title?.take(48) ?: "?"} http=$http " +
-                "err=${failure.javaClass.simpleName}: ${failure.message?.take(90) ?: "unknown"}",
+                "err=${describePlaybackFailure(failure)}",
         )
         if (streak >= MAX_CONSECUTIVE_AUTO_SKIPS) {
             player.pause()
@@ -9491,7 +9511,25 @@ internal fun PlayableTrack.toMediaItem(resolved: MusicPlayer.ResolvedStream? = n
         Uri.parse(resolved.url)
     } else if (playbackUrl?.isNotBlank() == true) {
         if (playbackUrl.startsWith("/")) {
-            Uri.fromFile(java.io.File(playbackUrl))
+            // Some library entries store a percent-encoded path ("My%20Song.mp3")
+            // while the file on disk carries real characters, or the reverse.
+            // The stored path alone then fails every open with a Source error.
+            // Before giving up on the file, try the alternate spellings.
+            val raw = java.io.File(playbackUrl)
+            val decoded = runCatching { java.net.URLDecoder.decode(playbackUrl, "UTF-8") }
+                .getOrNull()
+                ?.takeIf { it != playbackUrl }
+                ?.let(::java.io.File)
+            val spaceEncoded = java.io.File(playbackUrl.replace(" ", "%20"))
+            val spaceDecoded = java.io.File(playbackUrl.replace("%20", " "))
+            val usable = when {
+                raw.isFile -> raw
+                decoded != null && decoded.isFile -> decoded
+                spaceEncoded.isFile -> spaceEncoded
+                spaceDecoded.isFile -> spaceDecoded
+                else -> raw
+            }
+            Uri.fromFile(usable)
         } else {
             Uri.parse(playbackUrl)
         }

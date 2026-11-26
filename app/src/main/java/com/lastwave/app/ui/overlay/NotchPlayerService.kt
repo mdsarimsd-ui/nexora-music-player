@@ -258,13 +258,13 @@ private class NotchPillView(
     private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progress = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val thumb = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val titlePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         textSize = 15f * density
     }
-    private val artistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x99FFFFFF
+    private val artistPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x99FFFFFF.toInt()
         textSize = 11.5f * density
     }
     private val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -350,7 +350,7 @@ private class NotchPillView(
         )
         rim.shader = LinearGradient(
             -w / 4f, 0f, w, h,
-            intArrayOf(0xB3FFFFFF, 0x14FFFFFF, 0x4DFFFFFF),
+            intArrayOf(0xB3FFFFFF.toInt(), 0x14FFFFFF, 0x4DFFFFFF),
             floatArrayOf(0f, 0.55f, 1f),
             Shader.TileMode.CLAMP,
         )

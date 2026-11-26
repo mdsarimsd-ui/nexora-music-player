@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -334,24 +335,46 @@ fun LiquidGlassSurface(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = modifier,
-        shape = shape,
-        color = color,
-        contentColor = contentColor,
-        tonalElevation = tonalElevation,
-        shadowElevation = shadowElevation,
-        border = border,
-        interactionSource = interactionSource,
-        enabled = enabled,
-    ) {
+    // Material3 Surface has no onLongClick overload, so when one is supplied
+    // we attach combinedClickable ourselves and use the plain Surface.
+    val body: @Composable () -> Unit = {
         Box(
             modifier = Modifier.fillMaxSize().then(glassModifier),
             contentAlignment = Alignment.Center,
         ) {
             content()
+        }
+    }
+    if (onLongClick == null) {
+        Surface(
+            onClick = onClick,
+            modifier = modifier,
+            shape = shape,
+            color = color,
+            contentColor = contentColor,
+            tonalElevation = tonalElevation,
+            shadowElevation = shadowElevation,
+            border = border,
+            interactionSource = interactionSource,
+            enabled = enabled,
+        ) {
+            body()
+        }
+    } else {
+        Surface(
+            modifier = modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
+            shape = shape,
+            color = color,
+            contentColor = contentColor,
+            tonalElevation = tonalElevation,
+            shadowElevation = shadowElevation,
+            border = border,
+            enabled = enabled,
+        ) {
+            body()
         }
     }
 }

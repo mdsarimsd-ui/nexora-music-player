@@ -139,6 +139,19 @@ class AudioEffectsEngine @Inject constructor(
         eqNative.publish(chainOn, preamp, filters)
     }
 
+    /**
+     * Applies an in-flight equalizer edit to the audible Musicolet chain
+     * immediately, without waiting for the DataStore write to round-trip.
+     * Band drags and preset taps land on the next audio block instead of
+     * after persistence. Never changes saved state.
+     */
+    fun previewMusicoletEq(enabled: Boolean, gainsDb: FloatArray) {
+        val current = equalizerSettings
+        publishMusicoletEq(
+            current.copy(enabled = enabled, gainsDb = gainsDb.toList()),
+        )
+    }
+
     /** Follows ExoPlayer whenever Android creates or replaces its audio session. */
     fun attach(audioSessionId: Int) {
         requestedSessionId = audioSessionId.takeIf { it != C.AUDIO_SESSION_ID_UNSET }

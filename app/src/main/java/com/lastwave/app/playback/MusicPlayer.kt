@@ -1738,6 +1738,10 @@ class MusicPlayer @Inject constructor(
                 enableAudioTrackPlaybackParams: Boolean,
             ): androidx.media3.exoplayer.audio.AudioSink {
                 val bufferSizing = OutputBufferSizing()
+                // Sized for the real speed (1x) instead of Media3's 8x
+                // headroom, which held ~2.7 s of already-processed audio:
+                // EQ and 8D/16D changes were only heard after all of it
+                // drained. Smaller buffer = effect changes land fast.
                 fun pcmSink(floatOutput: Boolean) = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(floatOutput)
                     .setEnableAudioTrackPlaybackParams(true)
@@ -4126,6 +4130,8 @@ class MusicPlayer @Inject constructor(
         }
         cancelCrossfade()
         player.playbackParameters = PlaybackParameters(clampedSpeed, clampedPitch)
+        // Future tracks size for the speed actually in use, not 8x.
+        playerToSink[player]?.outputBufferSizing?.speedHeadroom = clampedSpeed.coerceAtLeast(1f).toDouble()
         _state.update { it.copy(speed = clampedSpeed, pitch = clampedPitch) }
         persistPlaybackSession()
     }
@@ -8600,7 +8606,7 @@ class MusicPlayer @Inject constructor(
             return OverlapSwap.Swapped(roundsUsed, driftMs)
         } finally {
             // Only this swap's AudioTrack: the deck's next track sizes as usual.
-            playerToSink[standby]?.outputBufferSizing?.speedHeadroom = null
+            playerToSink[standby]?.outputBufferSizing?.speedHeadroom = live.playbackParameters.speed.coerceAtLeast(1f).toDouble()
             if (!committed) {
                 runCatching {
                     standby.stop()
@@ -9519,7 +9525,7 @@ internal fun PlayableTrack.toMediaItem(resolved: MusicPlayer.ResolvedStream? = n
             val decoded = runCatching { java.net.URLDecoder.decode(playbackUrl, "UTF-8") }
                 .getOrNull()
                 ?.takeIf { it != playbackUrl }
-                ?.let(::java.io.File)
+                ?.let { java.io.File(it) }
             val spaceEncoded = java.io.File(playbackUrl.replace(" ", "%20"))
             val spaceDecoded = java.io.File(playbackUrl.replace("%20", " "))
             val usable = when {

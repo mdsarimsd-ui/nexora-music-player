@@ -106,6 +106,7 @@ class SettingsViewModel @Inject constructor(
     private val themeRepository: ThemeRepository,
     private val settingsPreferences: SettingsPreferences,
     private val audioEngine: dagger.Lazy<NativeAudioEngine>,
+    private val audioEffectsEngine: com.lastwave.app.playback.AudioEffectsEngine,
     private val generateRepository: GenerateRepository,
     private val discoverRepository: com.lastwave.app.data.discover.DiscoverRepository,
     private val backupRepository: BackupRepository,
@@ -369,7 +370,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             for ((enabled, gains) in eqPreviews) {
                 try {
-                    applyNativeAudio { it.setEqualizer(enabled, gains) }
+                    audioEffectsEngine.previewMusicoletEq(enabled, gains)
+                applyNativeAudio { it.setEqualizer(enabled, gains) }
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {

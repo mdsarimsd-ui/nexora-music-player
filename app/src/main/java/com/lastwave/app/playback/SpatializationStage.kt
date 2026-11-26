@@ -188,6 +188,7 @@ class SpatializationStage {
                 val n = itdBuf.size
                 val idxL = (itdIdx - delayL + n) % n
                 val idxR = (itdIdx - delayR + n) % n
+                val panDepth = 0.85f
                 val coreL = (if (n > 0) itdBuf[idxL] else mono) * panL * panDepth
                 val coreR = (if (n > 0) itdBuf[idxR] else mono) * panR * panDepth
                 itdIdx = if (n > 0) (itdIdx + 1) % n else 0

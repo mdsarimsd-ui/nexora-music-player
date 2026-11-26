@@ -131,6 +131,10 @@ data class FeedData(
 }
 
 @Singleton
+private val GARBAGE_SHELF_HINTS = listOf(
+    "mood", "genre", "podcast", "radio", "mix", "artist", "forgotten", "decade",
+)
+
 class FeedRepository @Inject constructor(
     private val innerTube: InnerTubeMusicApi,
     private val recommendationRepository: RecommendationRepository,
@@ -173,35 +177,9 @@ class FeedRepository @Inject constructor(
         }
         // Podcast shelf rides along with the rest of the feed. Loaded from
         // YouTube Music Podcasts chip page 1 ("Shows for you" shelf) with a random sample of ~10 shows.
+        // Podcast shelf removed: the clean home feed keeps songs only.
         val podcastShelfDef = async(Dispatchers.IO) {
-            if (!podcastsEnabled) return@async null
-            runCatching {
-                val homePage = homePageDef.await()
-                val podcastChip = homePage.chips.firstOrNull { it.title.equals("Podcasts", ignoreCase = true) }
-                    ?: HomeChip(title = "Podcasts", params = "ggMPOg1mZWVkX3BvZGNhc3Rz")
-                val chipPage = innerTube.fetchHomeChip(podcastChip)
-                val showsShelf = chipPage.shelves.firstOrNull { shelf ->
-                    shelf.items.any { it is HomeShelfItem.PodcastShow }
-                } ?: chipPage.shelves.firstOrNull()
-
-                val rawShows = showsShelf?.items?.filterIsInstance<HomeShelfItem.PodcastShow>().orEmpty()
-                if (rawShows.isEmpty()) null
-                else {
-                    val sampled = rawShows.shuffled(random).take(10).map { show ->
-                        PodcastShow(
-                            showId = show.browseId,
-                            title = show.title,
-                            publisher = show.author,
-                            artworkUrl = show.artworkUrl,
-                        )
-                    }
-                    val shelfTitle = showsShelf?.title?.takeIf { it.isNotBlank() } ?: "Popular shows"
-                    PodcastShelf(
-                        title = shelfTitle,
-                        shows = sampled,
-                    )
-                }
-            }.getOrNull()
+            null
         }
 
         val ytTasteDef = async(Dispatchers.IO) {
@@ -872,9 +850,7 @@ class FeedRepository @Inject constructor(
         val tasteTags = tasteProfile?.topTags.orEmpty().take(8).ifEmpty { defaultTasteTags }
         val hasPersonalContent = tasteProfile?.hasPersonalSignals == true ||
             ytRecentSongs.isNotEmpty() || ytLikedSongs.isNotEmpty() || recentTracks.isNotEmpty()
-        // The podcast shelf joins the final feed; the first paint (familiar
-        // picks) never waits for it.
-        val podcastShelf = podcastShelfDef.await()
+        val podcastShelf: PodcastShelf? = null
 
         val result = FeedData(
             isYtConnected = isYtConnected,
@@ -884,8 +860,11 @@ class FeedRepository @Inject constructor(
             hasYtMixes = false,
             hasPersonalContent = hasPersonalContent,
             tasteTags = tasteTags,
-            nativeShelves = nativeShelves,
-            homeChips = homeChips,
+            nativeShelves = nativeShelves.filter { shelf ->
+                val t = shelf.title.lowercase()
+                GARBAGE_SHELF_HINTS.none { it in t }
+            },
+            homeChips = emptyList(),
             homeContinuationToken = homeContinuationToken,
             ytSuggestedPlaylists = homePlaylists.filter { it.id != "LM" }.take(12),
             spotlight = spotlight,
@@ -893,14 +872,14 @@ class FeedRepository @Inject constructor(
             quickPicks = quickPicks,
             newReleases = newReleases,
             charts = charts,
-            mixes = mixes,
+            mixes = emptyList(),
             jumpBackIn = jumpBackIn,
             recentAlbums = recentAlbums,
-            topArtists = topArtists,
-            heavyRotation = heavyRotation,
+            topArtists = emptyList(),
+            heavyRotation = emptyList(),
             ytLikedSongs = ytLikedSongs,
             ytRecentSongs = ytRecentSongs,
-            becauseYouListenTo = becauseSection,
+            becauseYouListenTo = emptyList(),
             freshFinds = freshFinds,
             friends = friends.take(10),
             podcastShows = podcastShelf?.shows.orEmpty(),

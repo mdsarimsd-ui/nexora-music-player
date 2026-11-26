@@ -835,6 +835,13 @@ internal fun QueuePanel(
                                         player.seekToQueueItem(currentQueueKeys.indexOf(stableKey).takeIf { it >= 0 } ?: currentIndex)
                                     }
                                 },
+                                onLongClick = {
+                                    if (!selectionMode) {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        selectionMode = true
+                                        selectedKeys = setOf(stableKey)
+                                    }
+                                },
                                 shape = itemShape,
                                 color = when {
                                     stableKey in selectedKeys ->
@@ -855,17 +862,6 @@ internal fun QueuePanel(
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .pointerInput(stableKey, selectionMode) {
-                                            detectTapGestures(
-                                                onLongPress = {
-                                                    if (!selectionMode) {
-                                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        selectionMode = true
-                                                        selectedKeys = setOf(stableKey)
-                                                    }
-                                                },
-                                            )
-                                        }
                                         .padding(9.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {

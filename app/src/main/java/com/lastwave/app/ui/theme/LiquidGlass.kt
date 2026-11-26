@@ -322,6 +322,7 @@ fun createSquirclePath(
 fun LiquidGlassSurface(
     onClick: () -> Unit,
     glassModifier: Modifier,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     color: Color = MaterialTheme.colorScheme.surface,
@@ -335,6 +336,7 @@ fun LiquidGlassSurface(
 ) {
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier,
         shape = shape,
         color = color,

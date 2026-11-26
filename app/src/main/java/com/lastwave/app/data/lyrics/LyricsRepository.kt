@@ -810,7 +810,7 @@ class LyricsRepository @Inject constructor(
         val base = forSearchTitle(raw)
         val out = LinkedHashSet<String>()
         fun add(s: String) {
-            val t = Regex("\s+").replace(s, " ").trim().trimEnd(',', '-', '\u2013', '\u2014').trim()
+            val t = Regex("\\s+").replace(s, " ").trim().trimEnd(',', '-', '\u2013', '\u2014').trim()
             if (t.length >= 3 && !t.equals(base.trim(), ignoreCase = true)) out.add(t)
         }
         var cleaned = base.replace(
@@ -819,7 +819,8 @@ class LyricsRepository @Inject constructor(
         )
         cleaned = cleaned.replace(Regex("""\s*[|/\u2022\u00b7\u00d7]+\s*"""), " ")
         add(cleaned)
-        for (part in base.split(Regex("""\s*[|/\u2022\u00b7\u00d7]+\s*"""), Regex("""\s+[xX\u00d7]\s+"""), Regex("""\s+&\s+"""))) {
+        val splitter = Regex("""\s*[|/\u2022\u00b7\u00d7]+\s*|\s+[xX\u00d7]\s+|\s+&\s+""")
+        for (part in base.split(splitter)) {
             add(forSearchTitle(part))
         }
         return out.toList().take(4)

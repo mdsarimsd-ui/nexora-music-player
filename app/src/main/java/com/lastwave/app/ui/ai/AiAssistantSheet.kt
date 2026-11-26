@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,6 +104,7 @@ fun AiAssistantSheet(
     var modelInput by remember { mutableStateOf("") }
     var requestInput by remember { mutableStateOf("") }
     var chipsVisible by remember { mutableStateOf(true) }
+    var settingsOpen by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     var voiceOn by remember { mutableStateOf(true) }
@@ -199,18 +201,23 @@ fun AiAssistantSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.Transparent,
+        dragHandle = null,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
+        // Floating Gemini-style card: hovered above the bottom edge, glass all around.
         LiquidGlassSurface(
             onClick = {},
             glassModifier = Modifier.liquidGlassChrome(
-                RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                RoundedCornerShape(28.dp),
                 LocalLiquidGlass.current,
             ),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
         ) {
         Column(
             modifier = Modifier
@@ -275,6 +282,13 @@ fun AiAssistantSheet(
                         tint = if (AiOverlayService.running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                IconButton(onClick = { settingsOpen = !settingsOpen }) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "AI settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             if (sessions.isNotEmpty()) {
@@ -300,7 +314,7 @@ fun AiAssistantSheet(
 
             if (!settingsReady) {
                 Spacer(Modifier.height(24.dp))
-            } else {
+            } else if (settings.apiKey.isBlank() || settingsOpen) {
                 // Setup stays one line away: masked key, never readable again.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("AI Assistant", modifier = Modifier.weight(1f))
@@ -375,13 +389,18 @@ fun AiAssistantSheet(
                 if (chat.isEmpty() && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            "What do you want to hear?",
-                            style = MaterialTheme.typography.titleMedium,
+                            "Hello! How can I help you today?",
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "I build playlists from your library, answer questions about your music, and figure out why playback acts up.",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "Nexora AI can make mistakes.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

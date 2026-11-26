@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -201,6 +202,7 @@ fun AiAssistantSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.Transparent,
+        scrimColor = Color.Transparent,
         dragHandle = null,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
@@ -212,12 +214,12 @@ fun AiAssistantSheet(
                 LocalLiquidGlass.current,
             ),
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f),
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
+                .padding(bottom = 92.dp),
         ) {
         Column(
             modifier = Modifier
@@ -408,6 +410,7 @@ fun AiAssistantSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(max = 260.dp)
                             .verticalScroll(scrollState),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {

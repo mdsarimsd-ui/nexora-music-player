@@ -39,9 +39,19 @@ import kotlin.math.sin
 object NotchPlayerPrefs {
     private const val FILE = "notch_player_prefs"
     private const val KEY_ENABLED = "enabled"
+    private const val KEY_MIGRATED_OFF = "migrated_off_v5710"
 
-    fun enabled(context: Context): Boolean =
-        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_ENABLED, true)
+    fun enabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+        // v5.7.10: the notch player ships OFF. One-time reset so installs that
+        // had it on from v5.7.9 come up without it; the Settings toggle can
+        // still turn it back on.
+        if (!prefs.getBoolean(KEY_MIGRATED_OFF, false)) {
+            prefs.edit().putBoolean(KEY_ENABLED, false).putBoolean(KEY_MIGRATED_OFF, true).apply()
+            return false
+        }
+        return prefs.getBoolean(KEY_ENABLED, false)
+    }
 
     fun setEnabled(context: Context, value: Boolean) {
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)

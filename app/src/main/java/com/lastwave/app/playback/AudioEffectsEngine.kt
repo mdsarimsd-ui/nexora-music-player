@@ -498,16 +498,29 @@ class AudioEffectsEngine @Inject constructor(
             if (gainsDb.size != EQ_BAND_FREQS_HZ.size) return 0f
             if (hz <= EQ_BAND_FREQS_HZ.first()) return gainsDb.first()
             if (hz >= EQ_BAND_FREQS_HZ.last()) return gainsDb.last()
-            for (index in 0 until EQ_BAND_FREQS_HZ.lastIndex) {
-                val low = EQ_BAND_FREQS_HZ[index]
-                val high = EQ_BAND_FREQS_HZ[index + 1]
-                if (hz in low..high) {
-                    val position = (ln(hz.toFloat()) - ln(low.toFloat())) /
-                        (ln(high.toFloat()) - ln(low.toFloat()))
-                    return gainsDb[index] + (gainsDb[index + 1] - gainsDb[index]) * position
-                }
+            val query = ln(hz.toFloat())
+            var index = 0
+            for (i in 0 until EQ_BAND_FREQS_HZ.lastIndex) {
+                if (query >= ln(EQ_BAND_FREQS_HZ[i].toFloat())) index = i
             }
-            return 0f
+            val low = ln(EQ_BAND_FREQS_HZ[index].toFloat())
+            val high = ln(EQ_BAND_FREQS_HZ[index + 1].toFloat())
+            val t = ((query - low) / (high - low)).coerceIn(0f, 1f)
+            // Catmull-Rom through the neighbouring bands: a smooth curve across
+            // the slider line instead of straight joins, so adjacent-band
+            // settings blend rather than kink.
+            val p0 = gainsDb[(index - 1).coerceAtLeast(0)]
+            val p1 = gainsDb[index]
+            val p2 = gainsDb[index + 1]
+            val p3 = gainsDb[(index + 2).coerceAtMost(gainsDb.lastIndex)]
+            val t2 = t * t
+            val t3 = t2 * t
+            return 0.5f * (
+                2f * p1 +
+                    (-p0 + p2) * t +
+                    (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+                    (-p0 + 3f * p1 - 3f * p2 + p3) * t3
+                )
         }
     }
 }

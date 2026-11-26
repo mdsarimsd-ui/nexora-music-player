@@ -879,7 +879,7 @@ class FeedRepository @Inject constructor(
             heavyRotation = emptyList(),
             ytLikedSongs = ytLikedSongs,
             ytRecentSongs = ytRecentSongs,
-            becauseYouListenTo = emptyList(),
+            becauseYouListenTo = null,
             freshFinds = freshFinds,
             friends = friends.take(10),
             podcastShows = podcastShelf?.shows.orEmpty(),

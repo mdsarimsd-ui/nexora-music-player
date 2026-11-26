@@ -125,6 +125,29 @@ private:
         return static_cast<float>(value * preampGain_);
     }
 
+    /**
+     * Poweramp-style output limiter. Engages only when a published filter
+     * boosts the signal: a per-channel peak envelope (fast attack, slow
+     * release) drives a soft-knee gain reduction, so boosted bands stay
+     * clean instead of hard-clipping. Runs after the EQ and preamp.
+     */
+    inline float limit(std::size_t channel, float value) noexcept {
+        if (!limiterEnabled_) return value;
+        const float peak = std::abs(value);
+        const float envCoef =
+            peak > limiterEnv_[channel] ? limiterAttackCoef_ : limiterReleaseCoef_;
+        limiterEnv_[channel] = envCoef * limiterEnv_[channel] + (1.0F - envCoef) * peak;
+        float target = 1.0F;
+        if (limiterEnv_[channel] > kLimiterThreshold) {
+            const float e = limiterEnv_[channel];
+            target = (kLimiterThreshold + (e - kLimiterThreshold) / kLimiterRatio) / e;
+        }
+        const float gainCoef =
+            target < limiterGain_[channel] ? limiterAttackCoef_ : limiterReleaseCoef_;
+        limiterGain_[channel] = gainCoef * limiterGain_[channel] + (1.0F - gainCoef) * target;
+        return std::clamp(value * limiterGain_[channel], -kLimiterCeiling, kLimiterCeiling);
+    }
+
     double sampleRate_{48000.0};
     std::int32_t channels_{2};
     std::uint32_t appliedRevision_{0xFFFFFFFFU};
@@ -138,6 +161,16 @@ private:
     std::array<std::int32_t, kMaxFilters> slotSource_{
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     std::uint32_t ditherState_{0x12345678U};
+
+    // Output limiter state (per channel).
+    static constexpr float kLimiterThreshold = 0.891F;  // about -1 dBFS, soft-knee point
+    static constexpr float kLimiterRatio = 12.0F;
+    static constexpr float kLimiterCeiling = 0.980F;    // about -0.18 dBFS hard safety
+    bool limiterEnabled_{false};
+    float limiterAttackCoef_{0.98F};
+    float limiterReleaseCoef_{0.999F};
+    std::array<float, kMaxChannels> limiterEnv_{};
+    std::array<float, kMaxChannels> limiterGain_{};
 };
 
 }  // namespace lastwave::audio

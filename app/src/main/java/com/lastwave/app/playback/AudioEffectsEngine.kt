@@ -135,7 +135,9 @@ class AudioEffectsEngine @Inject constructor(
             return
         }
         val maxBoost = filters.maxOf { it.gainDb }
-        val preamp = -(maxBoost * 0.5f).coerceIn(0f, 8f)
+        // Native soft-knee limiter owns clipping headroom now, so the
+        // static preamp cut only trims the loudest boost quarter.
+        val preamp = -(maxBoost * 0.25f).coerceIn(0f, 6f)
         eqNative.publish(chainOn, preamp, filters)
     }
 

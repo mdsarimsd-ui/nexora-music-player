@@ -124,6 +124,9 @@ bool ParametricEq::isEngaged() noexcept {
 void ParametricEq::configure(double sampleRate, std::int32_t channels) noexcept {
     sampleRate_ = std::max(sampleRate, 8000.0);
     channels_ = std::clamp<std::int32_t>(channels, 1, static_cast<std::int32_t>(kMaxChannels));
+    // Limiter time constants: about 1 ms attack, 120 ms release.
+    limiterAttackCoef_ = static_cast<float>(std::exp(-1.0 / std::max(1.0, 0.001 * sampleRate_)));
+    limiterReleaseCoef_ = static_cast<float>(std::exp(-1.0 / std::max(1.0, 0.12 * sampleRate_)));
     appliedRevision_ = 0xFFFFFFFFU;
     reset();
     syncConfiguration();
@@ -132,6 +135,8 @@ void ParametricEq::configure(double sampleRate, std::int32_t channels) noexcept 
 void ParametricEq::reset() noexcept {
     for (auto& state : z1_) state.fill(0.0);
     for (auto& state : z2_) state.fill(0.0);
+    limiterEnv_.fill(0.0F);
+    limiterGain_.fill(1.0F);
 }
 
 void ParametricEq::syncConfiguration() noexcept {
@@ -146,6 +151,7 @@ void ParametricEq::syncConfiguration() noexcept {
     const auto count = std::min(
         static_cast<std::size_t>(std::max(0, config.count.load(std::memory_order_relaxed))),
         kMaxFilters);
+    bool anyBoost = false;
     std::size_t active = 0;
     for (std::size_t i = 0; i < count; ++i) {
         if (!config.filterOn[i].load(std::memory_order_relaxed)) continue;
@@ -156,6 +162,7 @@ void ParametricEq::syncConfiguration() noexcept {
         spec.q = config.qs[i].load(std::memory_order_relaxed);
         const bool passFilter = spec.type == kLowPass || spec.type == kHighPass;
         if (!passFilter && std::abs(spec.gainDb) < 0.001) continue;
+        if (spec.gainDb > 0.5) anyBoost = true;
         // A filter above Nyquist at this rate would alias: skip it.
         if (spec.frequency >= sampleRate_ * 0.49) continue;
         const Coefficients next = design(spec, sampleRate_);
@@ -176,6 +183,9 @@ void ParametricEq::syncConfiguration() noexcept {
     }
     activeCount_ = active;
     if (!enabled_) activeCount_ = 0;
+    // The limiter only rides boosted configurations; flat or cut-only curves
+    // can never clip, so it stays out of the path entirely.
+    limiterEnabled_ = enabled_ && anyBoost;
 }
 
 bool ParametricEq::process(float* samples, std::int32_t frameCount, std::int32_t channelCount) noexcept {
@@ -191,7 +201,8 @@ bool ParametricEq::process(float* samples, std::int32_t frameCount, std::int32_t
         float* sample = samples + frame * channels;
         for (std::size_t ch = 0; ch < channels; ++ch) {
             const float out = tick(sample[ch], ch);
-            sample[ch] = std::isfinite(out) ? out : 0.0F;
+            const float limited = limit(ch, std::isfinite(out) ? out : 0.0F);
+            sample[ch] = std::isfinite(limited) ? limited : 0.0F;
         }
     }
     // Denormal / blow-up guard once per block instead of per sample.
@@ -233,7 +244,7 @@ bool ParametricEq::processPcm(std::uint8_t* data, std::size_t byteCount, std::in
                     std::int16_t raw;
                     std::memcpy(&raw, p, sizeof(raw));
                     const float in = static_cast<float>(raw) / 32768.0F;
-                    float out = tick(in, ch);
+                    float out = limit(ch, tick(in, ch));
                     // TPDF dither (+-1 LSB) before requantizing to 16 bits.
                     ditherState_ = ditherState_ * 1664525U + 1013904223U;
                     const float r1 = static_cast<float>(ditherState_ >> 8) / 16777216.0F;
@@ -247,7 +258,8 @@ bool ParametricEq::processPcm(std::uint8_t* data, std::size_t byteCount, std::in
                 }
                 case kPcm24Packed: {
                     const float in = static_cast<float>(readInt24(p)) / 8388608.0F;
-                    const double scaled = static_cast<double>(tick(in, ch)) * 8388608.0;
+                    const double scaled =
+                        static_cast<double>(limit(ch, tick(in, ch))) * 8388608.0;
                     const double rounded = std::isfinite(scaled) ? std::nearbyint(scaled) : 0.0;
                     writeInt24(p, static_cast<std::int32_t>(std::clamp(rounded, -8388608.0, 8388607.0)));
                     break;
@@ -256,7 +268,9 @@ bool ParametricEq::processPcm(std::uint8_t* data, std::size_t byteCount, std::in
                     std::int32_t raw;
                     std::memcpy(&raw, p, sizeof(raw));
                     const double in = static_cast<double>(raw) / 2147483648.0;
-                    const double scaled = static_cast<double>(tick(static_cast<float>(in), ch)) * 2147483648.0;
+                    const double scaled =
+                        static_cast<double>(limit(ch, tick(static_cast<float>(in), ch))) *
+                        2147483648.0;
                     const double rounded = std::isfinite(scaled) ? std::nearbyint(scaled) : 0.0;
                     const auto value = static_cast<std::int32_t>(std::clamp(rounded, -2147483648.0, 2147483647.0));
                     std::memcpy(p, &value, sizeof(value));
@@ -265,10 +279,9 @@ bool ParametricEq::processPcm(std::uint8_t* data, std::size_t byteCount, std::in
                 case kPcmFloat: {
                     float raw;
                     std::memcpy(&raw, p, sizeof(raw));
-                    // Float output passes through unclamped: downstream stages
-                    // and the final limiter own headroom, so boosted bands no
-                    // longer hard-clip inside the EQ.
-                    float out = tick(raw, ch);
+                    // Soft-limited here when boosting; the downstream safety
+                    // limiter still owns absolute headroom for other stages.
+                    float out = limit(ch, tick(raw, ch));
                     out = std::isfinite(out) ? out : 0.0F;
                     std::memcpy(p, &out, sizeof(out));
                     break;

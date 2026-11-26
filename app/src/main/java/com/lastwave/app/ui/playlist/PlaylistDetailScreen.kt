@@ -65,6 +65,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Queue
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
@@ -488,6 +491,43 @@ fun PlaylistDetailScreen(
                             ) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Text("Play")
+                            }
+                            IconButton(
+                                onClick = {
+                                    val ordered = displayTracks.filterIndexed { i, _ ->
+                                        displayTrackIndices.getOrElse(i) { i } in selectedTrackIdxs
+                                    }
+                                    if (ordered.isNotEmpty()) {
+                                        runCatching {
+                                            musicPlayer.addTracksNext(ordered.map(GeneratedTrack::toPlayableTrack))
+                                        }
+                                        selectionMode = false
+                                        selectedTrackIdxs = setOf()
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Filled.SkipNext, contentDescription = "Play next", modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(
+                                onClick = {
+                                    val ordered = displayTracks.filterIndexed { i, _ ->
+                                        displayTrackIndices.getOrElse(i) { i } in selectedTrackIdxs
+                                    }
+                                    if (ordered.isNotEmpty()) {
+                                        runCatching {
+                                            musicPlayer.appendTracksToQueue(ordered.map(GeneratedTrack::toPlayableTrack))
+                                        }
+                                        selectionMode = false
+                                        selectedTrackIdxs = setOf()
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Filled.Queue, contentDescription = "Add to queue", modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(
+                                onClick = { selectedTrackIdxs = displayTrackIndices.toSet() },
+                            ) {
+                                Icon(Icons.Filled.SelectAll, contentDescription = "Select all", modifier = Modifier.size(20.dp))
                             }
                             TextButton(onClick = { selectionAddToPlaylistOpen = true }) {
                                 Icon(Icons.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(18.dp))

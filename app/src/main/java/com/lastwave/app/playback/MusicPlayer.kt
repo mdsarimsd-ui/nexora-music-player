@@ -3238,6 +3238,48 @@ class MusicPlayer @Inject constructor(
     }
 
     /**
+     * "Play next" for multiple tracks: inserts them right after the current
+     * one, preserving their list order (also under shuffle, where a plain
+     * insert lands at a random permutation spot). One main-thread step, so
+     * nothing can land between the insert and the shuffle-order pin.
+     */
+    fun addTracksNext(tracks: List<PlayableTrack>) = onMain {
+        if (tracks.isEmpty()) return@onMain
+        val fresh = tracks.map(PlayableTrack::withYoutubeArtwork)
+        if (isCasting) {
+            _state.update { snapshot ->
+                val queue = snapshot.queue.toMutableList()
+                queue.addAll((snapshot.currentIndex + 1).coerceIn(0, queue.size), fresh)
+                snapshot.copy(queue = queue)
+            }
+            persistPlaybackSession()
+            return@onMain
+        }
+        val wasEmpty = player.mediaItemCount == 0
+        val wasEnded = player.playbackState == Player.STATE_ENDED
+        val currentIndex = player.currentMediaItemIndex
+        val insertAt = (currentIndex + 1).coerceIn(0, player.mediaItemCount)
+        player.addMediaItems(insertAt, fresh.map(PlayableTrack::toMediaItem))
+        // Under shuffle the whole inserted block must land directly after the
+        // current track, in order: pin the LAST inserted index first (each
+        // call puts its index right after the current one), so the
+        // earliest-inserted track ends up first in the play order.
+        if (player.shuffleModeEnabled) {
+            for (offset in fresh.indices.reversed()) {
+                placeInsertedIndexInShuffleOrder(insertAt + offset, last = false)
+            }
+        }
+        refresh(player)
+        enrichUpcomingQueue(currentIndex.coerceAtLeast(0))
+        if (wasEmpty || wasEnded) {
+            player.seekToDefaultPosition(insertAt)
+            player.prepare()
+            player.play()
+        }
+        persistPlaybackSession()
+    }
+
+    /**
      * "Start Mix": the playing song carries on untouched and everything after
      * it becomes [tracks]. One main-thread step, so nothing can be queued
      * between the clear and the append; clearing also stops radio/discover

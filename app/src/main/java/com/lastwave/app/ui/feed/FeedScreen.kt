@@ -634,7 +634,7 @@ fun FeedScreen(
                         key == "new_releases" -> showSynthetic && combinedNewReleases.isNotEmpty()
                         key == "friends_activity" || key == "friends" -> state.feedData.friends.isNotEmpty()
                         key == "podcast_shelf" || key == "podcasts" -> showSynthetic && podcastsEnabled && state.feedData.podcastShows.isNotEmpty()
-                        key == "moods_and_genres" -> true
+                        key == "moods_and_genres" -> false // home cleanup: moods & genres tiles removed
                         key.startsWith("yt:") -> resolveNativeShelf(key) != null
                         else -> false
                     }

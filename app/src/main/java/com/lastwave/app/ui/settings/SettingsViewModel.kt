@@ -581,6 +581,7 @@ class SettingsViewModel @Inject constructor(
     fun setAmoled(enabled: Boolean) = launchSettingsAction("update AMOLED mode") { themeRepository.setAmoled(enabled) }
     fun setLegacyColors(enabled: Boolean) = launchSettingsAction("update legacy colors") { themeRepository.setLegacyColors(enabled) }
     fun setLiquidGlass(enabled: Boolean) = launchSettingsAction("update Liquid Glass") { themeRepository.setLiquidGlass(enabled) }
+    fun setGlassTheme(style: String) = launchSettingsAction("update glass theme") { themeRepository.setGlassStyle(style) }
     fun setMd3NavBar(enabled: Boolean) = launchSettingsAction("update MD3 Navigation Bar") { themeRepository.setMd3NavBar(enabled) }
     fun setHideNavTabs(enabled: Boolean) = launchSettingsAction("update Hide Navigation Tabs") { themeRepository.setHideNavTabs(enabled) }
     fun setUiHaptics(enabled: Boolean) = launchSettingsAction("update Haptic Feedback") { themeRepository.setUiHaptics(enabled) }

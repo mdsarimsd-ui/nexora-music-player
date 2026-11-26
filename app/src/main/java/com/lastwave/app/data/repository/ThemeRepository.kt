@@ -54,6 +54,7 @@ data class ThemeUiState(
      *  true, container roles in [colorScheme] are semi-translucent and the
      *  chrome surfaces get specular glass dressing. */
     val liquidGlass: Boolean = true,
+    val glassStyle: String = "classic",
     val md3NavBar: Boolean = false,
     val hideNavTabs: Boolean = false,
     /** Haptic feedback on taps, buttons, toggles and gestures (Settings toggle). */
@@ -296,6 +297,7 @@ class ThemeRepository @Inject constructor(
             useCustomFont = misc.useCustomFont,
             useBoldFont = misc.useBoldFont,
             liquidGlass = isGlass,
+            glassStyle = prefs.glassStyle,
             md3NavBar = prefs.md3NavBar,
             hideNavTabs = prefs.hideNavTabs,
             uiHaptics = prefs.uiHaptics,
@@ -359,6 +361,8 @@ class ThemeRepository @Inject constructor(
     suspend fun setAmoled(enabled: Boolean) = themePreferences.setAmoled(enabled)
 
     suspend fun setLiquidGlass(enabled: Boolean) = themePreferences.setLiquidGlass(enabled)
+
+    suspend fun setGlassStyle(style: String) = themePreferences.setGlassStyle(style)
 
     suspend fun setMd3NavBar(enabled: Boolean) = themePreferences.setMd3NavBar(enabled)
     suspend fun setHideNavTabs(enabled: Boolean) = themePreferences.setHideNavTabs(enabled)

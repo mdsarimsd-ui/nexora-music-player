@@ -1414,6 +1414,47 @@ fun SettingsScreen(
 
                         item {
                 Column {
+                    SectionLabel("Glass theme")
+                    Spacer(Modifier.height(10.dp))
+                    Card(
+                        shape = CardOuterShape,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                "Liquid glass style",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(
+                                    "classic" to "Classic",
+                                    "bold" to "Bold",
+                                    "chrome" to "Chrome",
+                                ).forEach { (id, label) ->
+                                    FilterChip(
+                                        selected = (theme?.glassStyle ?: "classic") == id,
+                                        onClick = { viewModel.setGlassTheme(id) },
+                                        label = { Text(label) },
+                                    )
+                                }
+                            }
+                            Text(
+                                "Bold: heavier frost. Chrome: stronger edge refraction with a shine.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+                        item {
+                Column {
                     SectionLabel(stringResource(R.string.settings_section_accent))
                     Spacer(Modifier.height(10.dp))
                     Card(

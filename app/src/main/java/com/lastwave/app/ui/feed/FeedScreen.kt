@@ -1462,10 +1462,10 @@ fun FeedScreen(
                                     val verticalSongs = (songRows.values.flatten() + forYou + moreLike)
                                         .distinctBy { it.videoId }
                                         .take(60)
-                                    LaunchedEffect(verticalSongs) {
-                                        viewModel.warmQuickPicks(verticalSongs.take(2))
-                                    }
                                     feedSectionItem(key = "more_songs", contentType = "more_songs") {
+                                        LaunchedEffect(verticalSongs) {
+                                            viewModel.warmQuickPicks(verticalSongs.take(2))
+                                        }
                                         HomeContainerSection(shape = getContainerShape("more_songs")) {
                                             FeedSectionHeader(
                                                 title = "More Songs",

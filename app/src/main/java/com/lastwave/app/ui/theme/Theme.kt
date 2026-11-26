@@ -161,6 +161,7 @@ fun LastWaveTheme(
                     defaultFontResolver
                 }
             }
+            SideEffect { GlassTheme.style = GlassTheme.fromId(themeState.glassStyle) }
             CompositionLocalProvider(
                 LocalDensity provides rememberFittedDensity(),
                 LocalFontFamilyResolver provides fontResolver,

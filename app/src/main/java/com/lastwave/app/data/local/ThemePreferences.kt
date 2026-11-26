@@ -40,6 +40,8 @@ data class ThemePrefs(
     val amoled: Boolean = false,
     /** iOS-style liquid-glass materials. Enabled by default. */
     val liquidGlass: Boolean = true,
+    /** Liquid-glass style variant id: classic, bold or chrome. */
+    val glassStyle: String = "classic",
     /** Optional compact Material 3 floating dock instead of the standard bottom tabs. */
     val md3NavBar: Boolean = false,
     /** Whether bottom navigation tabs are completely hidden. */
@@ -63,6 +65,7 @@ class ThemePreferences @Inject constructor(
         val ACCENT_MODE = stringPreferencesKey("lw_accentMode")
         val AMOLED = booleanPreferencesKey("lw_amoled")
         val LIQUID_GLASS = booleanPreferencesKey("lw_liquidGlass")
+        val GLASS_STYLE = stringPreferencesKey("lw_glassStyle")
         val MD3_NAV_BAR = booleanPreferencesKey("lw_md3NavBar")
         val HIDE_NAV_TABS = booleanPreferencesKey("lw_hideNavTabs")
         val UI_HAPTICS = booleanPreferencesKey("lw_ui_haptics")
@@ -81,6 +84,7 @@ class ThemePreferences @Inject constructor(
                 accentMode = AccentMode.fromStorage(p.readSafely(Keys.ACCENT_MODE)),
                 amoled = p.readSafely(Keys.AMOLED) ?: false,
                 liquidGlass = p.readSafely(Keys.LIQUID_GLASS) ?: true,
+                glassStyle = p.readSafely(Keys.GLASS_STYLE) ?: "classic",
                 md3NavBar = p.readSafely(Keys.MD3_NAV_BAR) ?: false,
                 hideNavTabs = p.readSafely(Keys.HIDE_NAV_TABS) ?: false,
                 uiHaptics = p.readSafely(Keys.UI_HAPTICS) ?: true,
@@ -118,6 +122,10 @@ class ThemePreferences @Inject constructor(
 
     suspend fun setLiquidGlass(enabled: Boolean) {
         dataStore.edit { it[Keys.LIQUID_GLASS] = enabled }
+    }
+
+    suspend fun setGlassStyle(style: String) {
+        dataStore.edit { it[Keys.GLASS_STYLE] = style }
     }
 
     suspend fun setMd3NavBar(enabled: Boolean) {

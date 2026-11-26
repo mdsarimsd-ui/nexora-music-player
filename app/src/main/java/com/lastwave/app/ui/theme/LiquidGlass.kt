@@ -88,6 +88,20 @@ val LocalMd3NavBar = staticCompositionLocalOf { false }
 /** Background-only source for surfaces inside the captured scrolling content. */
 val LocalLiquidGlassBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
+/** Liquid-glass style variants selectable in Settings > Appearance. */
+enum class GlassStyle { CLASSIC, BOLD, CHROME }
+
+/** Holds the active glass style; Theme.kt sets it from the saved preference. */
+object GlassTheme {
+    @Volatile var style: GlassStyle = GlassStyle.CLASSIC
+
+    fun fromId(id: String?): GlassStyle = when (id) {
+        "bold" -> GlassStyle.BOLD
+        "chrome" -> GlassStyle.CHROME
+        else -> GlassStyle.CLASSIC
+    }
+}
+
 /** Separate source for overlays; kept for call-site compat, same type as backdrop. */
 val LocalLiquidGlassOverlayBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
@@ -507,12 +521,14 @@ fun Modifier.drawInteractiveGlass(
             shape = { lensSafeGlassShape(shape) },
             highlight = { highlight },
             effects = {
+                val glassStyle = GlassTheme.style
                 val l = (luminanceAnimation * 2f - 1f).let { sign(it) * it * it }
                 val press = interaction?.pressProgress ?: 0f
                 colorControls(
                     brightness = GlassRecipe.BRIGHTNESS,
                     contrast = GlassRecipe.CONTRAST,
-                    saturation = GlassRecipe.SATURATION,
+                    saturation = GlassRecipe.SATURATION *
+                        (if (glassStyle == GlassStyle.BOLD) 1.18f else 1f),
                 )
                 blur(
                     (
@@ -529,10 +545,12 @@ fun Modifier.drawInteractiveGlass(
                                 -l,
                             )
                         }
-                    ) * blurScale + GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
+                    ) * (blurScale * (if (glassStyle == GlassStyle.BOLD) 1.8f else 1f)) +
+                        GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
                 )
                 lens(
-                    size.minDimension / GlassRecipe.LENS_DIVISOR +
+                    size.minDimension /
+                        (GlassRecipe.LENS_DIVISOR * (if (glassStyle == GlassStyle.CHROME) 0.55f else 1f)) +
                         GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
                     size.minDimension / 2f,
                     false,
@@ -544,6 +562,21 @@ fun Modifier.drawInteractiveGlass(
             onDrawSurface = {
                 val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
                 drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
+                if (glassStyle == GlassStyle.CHROME) {
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.16f),
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.08f),
+                            ),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height),
+                        ),
+                        blendMode = BlendMode.Plus,
+                    )
+                }
                 val press = interaction?.pressProgress ?: 0f
                 if (press > 0f) {
                     drawRect(

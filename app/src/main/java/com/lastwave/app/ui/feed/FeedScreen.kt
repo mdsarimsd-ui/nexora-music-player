@@ -1459,6 +1459,9 @@ fun FeedScreen(
                                     }
                                 }
                                 sectionKey == "more_songs" -> {
+                                    val verticalSongs = (songRows.values.flatten() + forYou + moreLike)
+                                        .distinctBy { it.videoId }
+                                        .take(60)
                                     feedSectionItem(key = "more_songs", contentType = "more_songs") {
                                         HomeContainerSection(shape = getContainerShape("more_songs")) {
                                             FeedSectionHeader(

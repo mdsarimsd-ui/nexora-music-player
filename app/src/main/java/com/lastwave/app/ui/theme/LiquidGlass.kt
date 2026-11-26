@@ -365,6 +365,7 @@ fun LiquidGlassSurface(
             modifier = modifier.combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
+                enabled = enabled,
             ),
             shape = shape,
             color = color,
@@ -372,7 +373,6 @@ fun LiquidGlassSurface(
             tonalElevation = tonalElevation,
             shadowElevation = shadowElevation,
             border = border,
-            enabled = enabled,
         ) {
             body()
         }

@@ -1210,6 +1210,17 @@ internal fun FullPlayer(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                             }
+                            // 8D / 16D strip visibility: it pops open whenever the
+                            // mode changes or you touch it, then folds away on its
+                            // own after a few idle seconds so the player stays clear.
+                            var spatialPanelOpen by remember { mutableStateOf(false) }
+                            var spatialPanelTick by remember { mutableIntStateOf(0) }
+                            LaunchedEffect(spatialPanelOpen, spatialMode, spatialPanelTick) {
+                                if (spatialPanelOpen && spatialMode != SpatializationMode.OFF) {
+                                    delay(5000)
+                                    spatialPanelOpen = false
+                                }
+                            }
                             Row(
                                 modifier = Modifier.align(Alignment.CenterEnd),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1224,6 +1235,10 @@ internal fun FullPlayer(
                                                 SpatializationMode.D16 -> SpatializationMode.OFF
                                             }
                                             playerViewModel.setSpatialization(next)
+                                            if (next != SpatializationMode.OFF) {
+                                                spatialPanelOpen = true
+                                                spatialPanelTick++
+                                            }
                                         },
                                         shape = CircleShape,
                                         color = if (spatialMode != SpatializationMode.OFF) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
@@ -1329,7 +1344,7 @@ internal fun FullPlayer(
                                 }
                             }
                         }
-                        if (currentTab == FullPlayerTab.NOW_PLAYING && spatialMode != SpatializationMode.OFF) {
+                        if (currentTab == FullPlayerTab.NOW_PLAYING && spatialMode != SpatializationMode.OFF && spatialPanelOpen) {
                             // 8D / 16D movement strip: pick the path the source
                             // travels and how fast it circles around the head.
                             var speedDrag by remember { mutableStateOf<Float?>(null) }
@@ -1355,7 +1370,7 @@ internal fun FullPlayer(
                                         listOf(SpatialPath.CLASSIC, SpatialPath.ORBIT, SpatialPath.FIGURE8).forEach { pathOption ->
                                             val selected = spatialPathUi == pathOption
                                             LiquidGlassSurface(
-                                                onClick = hapticClick { playerViewModel.setSpatialPath(pathOption) },
+                                                onClick = hapticClick { playerViewModel.setSpatialPath(pathOption); spatialPanelTick++ },
                                                 shape = CircleShape,
                                                 color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                                                 else liquidGlassContainerColor(if (isThemeLight) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.10f)),
@@ -1384,7 +1399,7 @@ internal fun FullPlayer(
                                         )
                                         Slider(
                                             value = speedDrag ?: spatialSpeedUi,
-                                            onValueChange = { speedDrag = it },
+                                            onValueChange = { speedDrag = it; spatialPanelTick++ },
                                             onValueChangeFinished = {
                                                 speedDrag?.let { playerViewModel.setSpatialSpeed(it) }
                                                 speedDrag = null
@@ -1407,7 +1422,7 @@ internal fun FullPlayer(
                                         )
                                         Slider(
                                             value = intensityDrag ?: spatialIntensityUi,
-                                            onValueChange = { intensityDrag = it },
+                                            onValueChange = { intensityDrag = it; spatialPanelTick++ },
                                             onValueChangeFinished = {
                                                 intensityDrag?.let { playerViewModel.setSpatialIntensity(it) }
                                                 intensityDrag = null

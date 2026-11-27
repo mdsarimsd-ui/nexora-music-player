@@ -1,8 +1,5 @@
-﻿# UPI (Buy Me a Chai)
-custom: ['https://buymeachai.ezee.li/ajisth69']
+# UPI (direct, India) - jumps to the README support section
+custom: ["https://github.com/mdsarimsd-ui/nexora-music-player#support-the-developer"]
 
-# GitHub Sponsors
-github: [ajisth69]
-
-# Buy Me a Coffee
-buy_me_a_coffee: ajisth
+# GitHub Sponsors (button lights up once the account enables Sponsors)
+github: [mdsarimsd-ui]

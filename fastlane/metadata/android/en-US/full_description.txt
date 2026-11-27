@@ -1,0 +1,17 @@
+Nexora is a free, open-source music player built around audio quality and a liquid-glass design.
+
+AUDIO
+- Musicolet-style equalizer tuned to avoid harshness and listening fatigue
+- 8D and 16D audio modes with a fold-away control strip
+- Real-time song trend analysis and an Ask AI assistant (bring your own key)
+
+PLAYBACK
+- Local files and streaming, gapless queue, saved mixes
+- Synced lyrics on the player
+- Notch media pill that wraps around your camera cutout (optional, off by default)
+
+DESIGN
+- Liquid-glass UI with a bottom pill player and a dynamic notch-area player
+- Dark-first theming
+
+No ads, no tracking. Nexora is a GPL-3.0 fork of LastWave, actively maintained.

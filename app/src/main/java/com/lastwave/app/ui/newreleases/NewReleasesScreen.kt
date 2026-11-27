@@ -385,7 +385,7 @@ fun NewReleasesScreen(
                 videoId = track.videoId.takeIf(String::isNotBlank),
             ),
             playbackSourceLabel = "New Releases",
-            onPlayInLastWave = {
+            onPlayInNexora = {
                 if (trackIndex >= 0) viewModel.playTrack(trackIndex)
             },
             onDismiss = { menuTrack = null },

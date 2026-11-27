@@ -3,7 +3,7 @@ package com.lastwave.app.diagnostics.core
 import java.io.File
 
 /**
- * How much history LastWave keeps on disk.
+ * How much history Nexora keeps on disk.
  *
  * Both channels are bounded: the user gets a fixed, predictable amount of
  * history and the app cannot fill a user's storage no matter how badly it

@@ -88,7 +88,7 @@ private fun animateColorScheme(target: ColorScheme): ColorScheme {
  * (nav bar, player, headers).
  */
 @Composable
-fun LastWaveTheme(
+fun NexoraTheme(
     themeState: ThemeUiState,
     content: @Composable () -> Unit,
 ) {
@@ -126,10 +126,10 @@ fun LastWaveTheme(
         colorScheme = activeColorScheme,
         typography = when {
             !themeState.useCustomFont -> if (themeState.useBoldFont) SystemBoldTypography else SystemTypography
-            themeState.useBoldFont -> LastWaveBoldTypography
-            else -> LastWaveTypography
+            themeState.useBoldFont -> NexoraBoldTypography
+            else -> NexoraTypography
         },
-        shapes = LastWaveShapes,
+        shapes = NexoraShapes,
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),

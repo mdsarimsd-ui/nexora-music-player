@@ -432,7 +432,7 @@ class SyncedVideoRepository @Inject constructor(
         runCatching {
             val request = okhttp3.Request.Builder()
                 .url("https://sponsor.ajay.app/api/skipSegments?videoID=$videoId&category=music_offtopic")
-                .header("User-Agent", "LastWave-Native/1.0")
+                .header("User-Agent", "Nexora-Native/1.0")
                 .build()
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@runCatching 0L

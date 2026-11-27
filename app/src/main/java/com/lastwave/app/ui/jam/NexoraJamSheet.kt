@@ -98,8 +98,8 @@ private fun formatMs(ms: Long): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LastWaveJamSheet(
-    viewModel: LastWaveJamViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+fun NexoraJamSheet(
+    viewModel: NexoraJamViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onDismiss: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -169,7 +169,7 @@ fun LastWaveJamSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_lastwave_logo_mono),
+                            painter = painterResource(id = R.drawable.ic_nexora_logo_mono),
                             contentDescription = null,
                             tint = DarkTeal,
                             modifier = Modifier.size(18.dp),
@@ -178,7 +178,7 @@ fun LastWaveJamSheet(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "LastWave Jam",
+                                text = "Nexora Jam",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                             )

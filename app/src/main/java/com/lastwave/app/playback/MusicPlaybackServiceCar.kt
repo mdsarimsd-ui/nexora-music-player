@@ -213,7 +213,7 @@ internal fun MusicPlaybackService.playCarSearch(query: String) {
             val played = runCatching {
                 withContext(Dispatchers.IO) {
                     if (query.isBlank()) {
-                        // "Hey Google, play music on LastWave": no title given.
+                        // "Hey Google, play music on Nexora": no title given.
                         androidAutoLibrary.playAnything(musicPlayer)
                     } else {
                         androidAutoLibrary.playSearch(query, musicPlayer)

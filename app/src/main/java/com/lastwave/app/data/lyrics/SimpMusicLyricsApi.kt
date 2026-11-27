@@ -49,7 +49,7 @@ class SimpMusicLyricsApi @Inject constructor(
         if (videoId.isNullOrBlank()) return@withContext null
         val request = Request.Builder()
             .url("https://api-lyrics.simpmusic.org/v1/${videoId.trim()}")
-            .header("User-Agent", "LastWave-Android/1.0 (https://github.com/clash-projects/lastwave)")
+            .header("User-Agent", "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)")
             .header("Accept", "application/json")
             .get()
             .build()

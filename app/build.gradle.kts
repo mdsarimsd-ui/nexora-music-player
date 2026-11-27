@@ -505,7 +505,7 @@ dependencies {
     // Pinned to the same 1.2.1 line as exoplayer/hls to avoid binary mismatch.
     implementation("androidx.media3:media3-exoplayer-dash:1.2.1")
     // MediaBrowserServiceCompat/MediaSessionCompat bridge used by Android
-    // Auto to browse the LastWave library and control the same player.
+    // Auto to browse the Nexora library and control the same player.
     implementation("androidx.media:media:1.7.0")
 
     // GPLv3 Media3-matched FFmpeg software decoder (distribution must comply).

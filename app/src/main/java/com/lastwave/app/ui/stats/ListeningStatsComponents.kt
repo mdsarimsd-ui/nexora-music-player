@@ -911,7 +911,7 @@ fun ConsistencyScoreCard(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Sleep tracker inspired flow analysis",
+                        text = "Flow analysis",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -18,7 +18,7 @@ data class ArtworkAccent(val seed: String, val second: String? = null)
 /**
  * Extracts a representative accent color from a track's artwork for the
  * "Dynamic Now Playing Theme" setting (Settings → Appearance). Reuses the
- * app's single Coil ImageLoader (LastWaveApplication.newImageLoader()) via
+ * app's single Coil ImageLoader (NexoraApplication.newImageLoader()) via
  * context.imageLoader — the now-playing row on Home has almost always
  * already decoded this exact URL into that same memory/disk cache, so this
  * is normally a cache hit rather than a fresh network fetch.

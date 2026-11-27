@@ -16,7 +16,7 @@ import kotlin.math.roundToInt
 
 /**
  * Builds Material Design 3 color schemes using the SchemeNeutral (reduced-chroma)
- * dynamic theming architecture from SleepTracker, tuned to deeply muted, dark obsidian
+ * dynamic theming architecture, tuned to deeply muted, dark obsidian
  * tones while preserving 100% cover art direction and contrast accessibility.
  */
 object Md3SchemeBuilder {
@@ -35,7 +35,7 @@ object Md3SchemeBuilder {
     private val DarkSurfaceVariant = Color(0xFF1E1E23)
     private val DarkSurfaceBright = Color(0xFF2A2A30)
 
-    // AMOLED tokens matching SleepTracker (deep true black)
+    // AMOLED tokens (deep true black)
     private val AmoledBlack = Color(0xFF000000)
     private val AmoledSurfaceContainerLow = Color(0xFF070707)
     private val AmoledSurfaceContainer = Color(0xFF0D0D0D)
@@ -289,9 +289,9 @@ object Md3SchemeBuilder {
         buildLightScheme("#777777", liquidGlass)
 
     /**
-     * LastWave Signature Dark Scheme built specifically around the official app logo colors.
+     * Nexora Signature Dark Scheme built specifically around the official app logo colors.
      */
-    fun buildLastWaveDarkScheme(
+    fun buildNexoraDarkScheme(
         amoled: Boolean,
         @Suppress("UNUSED_PARAMETER") liquidGlass: Boolean = false,
         useLegacyColors: Boolean = false,
@@ -349,9 +349,9 @@ object Md3SchemeBuilder {
     }
 
     /**
-     * LastWave Signature Light Scheme built around the official app logo colors.
+     * Nexora Signature Light Scheme built around the official app logo colors.
      */
-    fun buildLastWaveLightScheme(@Suppress("UNUSED_PARAMETER") liquidGlass: Boolean = false): ColorScheme {
+    fun buildNexoraLightScheme(@Suppress("UNUSED_PARAMETER") liquidGlass: Boolean = false): ColorScheme {
         val brandLime = Color(0xFFC9FB00)
         val darkTeal = Color(0xFF012226)
 

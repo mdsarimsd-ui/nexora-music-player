@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fires only when the best-effort public Download/LastWave/ export
+ * Fires only when the best-effort public Download/Nexora/ export
  * genuinely fails (not when it's skipped as a harmless no-op, e.g. no
  * legacy storage permission). The Room save has already succeeded by the
  * time this could fire, so this is a non-blocking heads-up, not a

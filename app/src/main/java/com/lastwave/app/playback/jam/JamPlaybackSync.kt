@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * Service-level synchronization bridge for LastWave Jam sessions.
+ * Service-level synchronization bridge for Nexora Jam sessions.
  *
  * Runs as an application-scoped singleton to guarantee that playback synchronization
  * continues uninterrupted across the entire app lifecycle, surviving backgrounding,

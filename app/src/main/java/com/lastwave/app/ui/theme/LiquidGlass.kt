@@ -138,7 +138,7 @@ fun rememberBackdrop(color: Color): LayerBackdrop? =
 
 /**
  * Continuous-curvature squircle (G2 superellipse) implementing [CornerBasedShape].
- * Kept from LastWave so DockShape stays a CornerBasedShape (lens-compatible).
+ * Kept from Nexora so DockShape stays a CornerBasedShape (lens-compatible).
  */
 class SquircleShape(
     topStart: CornerSize,
@@ -867,7 +867,7 @@ fun LiquidGlassIconButton(
     }
 }
 
-/** Compat overload: Painter version (existing LastWave call sites). */
+/** Compat overload: Painter version (existing Nexora call sites). */
 @Composable
 fun LiquidGlassIconButton(
     backdrop: Backdrop?,

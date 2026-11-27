@@ -134,6 +134,6 @@ class PrefetchResolver(
     }
 
     private companion object {
-        const val TAG = "LastWaveResolver"
+        const val TAG = "NexoraResolver"
     }
 }

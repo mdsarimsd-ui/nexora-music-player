@@ -78,7 +78,7 @@ class AddonClient(
             signRequest(url, "GET", reqBuilder)
             val req = reqBuilder.build()
             client.newCall(req).awaitAddonResponse().let { res ->
-                Log.i("LastWaveAddonHttp", "operation=manifest elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
+                Log.i("NexoraAddonHttp", "operation=manifest elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
                 if (!res.isSuccessful) {
                     return@withContext Result.failure(Exception("Manifest request failed (HTTP ${res.code})"))
                 }
@@ -117,7 +117,7 @@ class AddonClient(
             signRequest(url, "GET", reqBuilder)
             val req = reqBuilder.build()
             client.newCall(req).awaitAddonResponse().let { res ->
-                Log.i("LastWaveAddonHttp", "operation=search elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
+                Log.i("NexoraAddonHttp", "operation=search elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
                 if (!res.isSuccessful) {
                     return@withContext Result.failure(Exception("Search failed (HTTP ${res.code})"))
                 }
@@ -186,7 +186,7 @@ class AddonClient(
             val reqBuilder = Request.Builder().url(url).get()
             signRequest(url, "GET", reqBuilder)
             client.newCall(reqBuilder.build()).awaitAddonResponse().let { res ->
-                Log.i("LastWaveAddonHttp", "operation=prewarm elapsedMs=${res.elapsedMs} status=${res.code}")
+                Log.i("NexoraAddonHttp", "operation=prewarm elapsedMs=${res.elapsedMs} status=${res.code}")
                 res.code == 202
             }
         } catch (e: CancellationException) {
@@ -214,15 +214,15 @@ class AddonClient(
             val useStreamIntent = !isDownload || atmos || quality.equals("atmos", ignoreCase = true)
             if (useStreamIntent) {
                 reqBuilder.header("X-LW-Intent", "stream")
-                reqBuilder.header("User-Agent", "LastWave-Player/1.0")
+                reqBuilder.header("User-Agent", "Nexora-Player/1.0")
             } else {
                 reqBuilder.header("X-LW-Intent", "download")
-                reqBuilder.header("User-Agent", "LastWave-Downloader/1.0")
+                reqBuilder.header("User-Agent", "Nexora-Downloader/1.0")
             }
             signRequest(url, "GET", reqBuilder)
             val req = reqBuilder.build()
             client.newCall(req).awaitAddonResponse().let { res ->
-                Log.i("LastWaveAddonHttp", "operation=stream elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
+                Log.i("NexoraAddonHttp", "operation=stream elapsedMs=${res.elapsedMs} cache=${res.cacheState ?: "UNKNOWN"} timings=${res.timingMs}")
                 if (!res.isSuccessful) {
                     return@withContext Result.failure(Exception("Stream failed (HTTP ${res.code})"))
                 }

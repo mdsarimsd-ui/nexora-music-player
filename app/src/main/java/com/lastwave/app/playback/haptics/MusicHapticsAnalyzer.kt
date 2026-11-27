@@ -40,7 +40,7 @@ interface HapticPulseListener {
  * Read-only PCM analyser fed straight from the player's audio sink.
  *
  * It used to be a Media3 AudioProcessor inside DefaultAudioSink, but Media3 1.2.1
- * drops custom processors whenever the sink outputs float, and LastWave always
+ * drops custom processors whenever the sink outputs float, and Nexora always
  * hands its delegates float PCM, so the old tap never received a single sample.
  * The sink now calls [analyze] with every decoded buffer and its exact
  * presentation time, on the playback thread. The buffer is never modified.

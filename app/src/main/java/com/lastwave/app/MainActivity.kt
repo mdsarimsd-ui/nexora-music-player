@@ -28,10 +28,10 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.lastwave.app.data.repository.LastFmAuthCallbackCoordinator
-import com.lastwave.app.ui.navigation.LastWaveNavHost
+import com.lastwave.app.ui.navigation.NexoraNavHost
 import com.lastwave.app.ui.navigation.Screen
 import com.lastwave.app.ui.player.PlayerHost
-import com.lastwave.app.ui.theme.LastWaveTheme
+import com.lastwave.app.ui.theme.NexoraTheme
 import com.lastwave.app.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -202,7 +202,7 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val themeState by themeViewModel.uiState.collectAsStateWithLifecycle()
 
-            LastWaveTheme(themeState = themeState) {
+            NexoraTheme(themeState = themeState) {
                 val currentConfig = androidx.compose.ui.platform.LocalViewConfiguration.current
                 val customViewConfig = androidx.compose.runtime.remember(currentConfig) {
                     object : androidx.compose.ui.platform.ViewConfiguration by currentConfig {
@@ -238,7 +238,7 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
                             hideMiniPlayer = isJamScreen,
                             webContentScreen = isWebLoginScreen,
                         ) {
-                            LastWaveNavHost(navController)
+                            NexoraNavHost(navController)
                         }
                         // Desktop-style in-app update dialog, shared by every screen.
                         com.lastwave.app.ui.update.AppUpdateDialogHost()
@@ -431,7 +431,7 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     private companion object {
-        const val STARTUP_TAG = "LastWaveStartup"
+        const val STARTUP_TAG = "NexoraStartup"
         @Volatile
         var hasPromptedAudioThisSession = false
     }

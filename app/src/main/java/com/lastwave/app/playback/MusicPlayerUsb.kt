@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2026 LastWave Authors (https://github.com/Clash-Projects/LastWave-Native)
+ * Copyright (C) 2026 Nexora Authors (https://github.com/Clash-Projects/Nexora-Native)
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file is part of LastWave.
+ * This file is part of Nexora.
  *
- * LastWave is free software: you can redistribute it and/or modify
+ * Nexora is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * LastWave is distributed in the hope that it will be useful,
+ * Nexora is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with LastWave. If not, see <https://www.gnu.org/licenses/>.
+ * along with Nexora. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.lastwave.app.playback
@@ -350,7 +350,7 @@ internal fun MusicPlayer.setupSpatializerListener() {
      * the Bit-Perfect toggle decides bypass, volume policy and verdict.
      * The SOURCE rate always drives the output-stream request (44.1/48/
      * 88.2/96/176.4/192/352.8/384 kHz) â€” never a fixed 48 kHz â€” so no
-     * LastWave resampler runs when the route accepts the source format.
+     * Nexora resampler runs when the route accepts the source format.
      */
 internal fun MusicPlayer.applyDacRoutingFor(sourceRateHz: Int?, streamCodec: String? = null) {
         val isSpatial = isSpatialAudioCodec(streamCodec) || isSpatialAudioCodec(_state.value.audioCodec)

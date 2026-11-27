@@ -75,7 +75,7 @@ data class TrackMiniTrayData(
     val album: String? = null,
     val artworkUrl: String? = null,
     val videoId: String? = null,
-    val sourceLabel: String = "LastWave",
+    val sourceLabel: String = "Nexora",
     val onPlay: (() -> Unit)? = null,
     val durationMs: Long? = null,
 ) {

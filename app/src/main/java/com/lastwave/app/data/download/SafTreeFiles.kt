@@ -57,7 +57,7 @@ object SafTreeFiles {
         }
     }
 
-    /** Human-readable label for settings, e.g. "SD card › Music/LastWave".
+    /** Human-readable label for settings, e.g. "SD card › Music/Nexora".
      *  Null when the Uri is blank, malformed, or no longer accessible. */
     fun describeLocation(context: Context, uriString: String?): String? {
         val treeUri = parseTreeUri(uriString) ?: return null

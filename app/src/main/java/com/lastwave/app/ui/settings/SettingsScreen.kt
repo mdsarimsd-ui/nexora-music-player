@@ -38,8 +38,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.FolderOpen
-import com.lastwave.app.ui.jam.LastWaveJamSheet
-import com.lastwave.app.ui.jam.LastWaveJamViewModel
+import com.lastwave.app.ui.jam.NexoraJamSheet
+import com.lastwave.app.ui.jam.NexoraJamViewModel
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -397,7 +397,7 @@ fun SettingsScreen(
     onOpenSpotifyTokenImport: () -> Unit = {},
     onOpenJam: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
-    jamViewModel: LastWaveJamViewModel = hiltViewModel(),
+    jamViewModel: NexoraJamViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val jamUiState by jamViewModel.uiState.collectAsStateWithLifecycle()
@@ -1263,10 +1263,10 @@ fun SettingsScreen(
                                 icon = Icons.Filled.AutoAwesome,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                title = stringResource(R.string.settings_lastwave_theme),
-                                subtitle = stringResource(R.string.settings_lastwave_theme_sub),
-                                checked = theme?.isLastWaveTheme ?: false,
-                                onCheckedChange = viewModel::setLastWaveTheme,
+                                title = stringResource(R.string.settings_nexora_theme),
+                                subtitle = stringResource(R.string.settings_nexora_theme_sub),
+                                checked = theme?.isNexoraTheme ?: false,
+                                onCheckedChange = viewModel::setNexoraTheme,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.lastwave_theme"),
                             )
@@ -1300,10 +1300,10 @@ fun SettingsScreen(
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 title = stringResource(R.string.settings_dynamic_color),
                                 subtitle = stringResource(R.string.settings_dynamic_color_sub),
-                                checked = theme?.mode == AccentMode.DYNAMIC && !(theme?.isLastWaveTheme ?: false),
+                                checked = theme?.mode == AccentMode.DYNAMIC && !(theme?.isNexoraTheme ?: false),
                                 onCheckedChange = { enabled ->
-                                    if (enabled && (theme?.isLastWaveTheme == true)) {
-                                        viewModel.setLastWaveTheme(false)
+                                    if (enabled && (theme?.isNexoraTheme == true)) {
+                                        viewModel.setNexoraTheme(false)
                                     }
                                     viewModel.setAccentMode(if (enabled) AccentMode.DYNAMIC else AccentMode.MANUAL)
                                 },
@@ -1505,14 +1505,14 @@ fun SettingsScreen(
                                 currentMode = theme?.mode ?: AccentMode.MANUAL,
                                 selectedHex = theme?.accentColorHex,
                                 onPickPreset = { hex ->
-                                    if (theme?.isLastWaveTheme == true) {
-                                        viewModel.setLastWaveTheme(false)
+                                    if (theme?.isNexoraTheme == true) {
+                                        viewModel.setNexoraTheme(false)
                                     }
                                     viewModel.setManualAccent(Color(android.graphics.Color.parseColor(hex)))
                                 },
                                 onPickMono = {
-                                    if (theme?.isLastWaveTheme == true) {
-                                        viewModel.setLastWaveTheme(false)
+                                    if (theme?.isNexoraTheme == true) {
+                                        viewModel.setNexoraTheme(false)
                                     }
                                     viewModel.setAccentMode(AccentMode.MONOCHROME)
                                 },
@@ -1737,7 +1737,7 @@ fun SettingsScreen(
                         else ->
                             if (!ytConnected) "Connect an account first"
                             else if (ytSyncEnabled) "Selected playlists mirror to your account, 24/7" + lastSyncSuffix(ytLastSyncAt)
-                            else "Keep your YT Music library in sync with LastWave"
+                            else "Keep your YT Music library in sync with Nexora"
                     }
                     // Display name of the active channel: the picked entry when
                     // the channel list was loaded, otherwise the stored name.
@@ -2432,14 +2432,6 @@ fun SettingsScreen(
                     Spacer(Modifier.height(14.dp))
                     SectionLabel("More from us")
                     Spacer(Modifier.height(8.dp))
-                    MoreFromUsCard(
-                        onOpenUrl = { url ->
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            if (!startActivitySafely(context, intent)) {
-                                viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
-                            }
-                        }
-                    )
                 }
             }
                     }
@@ -2757,7 +2749,7 @@ fun SettingsScreen(
     }
 
     if (showJamSheet) {
-        LastWaveJamSheet(
+        NexoraJamSheet(
             viewModel = jamViewModel,
             onDismiss = { showJamSheet = false },
         )

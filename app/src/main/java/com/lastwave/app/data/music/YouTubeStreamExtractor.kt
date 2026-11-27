@@ -416,7 +416,7 @@ class YouTubeStreamExtractor @Inject constructor(
         initialize()
         val parameters = "https://cipher.invalid/?$signatureCipher".toHttpUrlOrNull() ?: return null
         var resolvedUrl = parameters.queryParameter("url") ?: run {
-            Log.w("LastWaveCipher", "stage=parse outcome=missing-url")
+            Log.w("NexoraCipher", "stage=parse outcome=missing-url")
             return null
         }
         val encryptedSignature = parameters.queryParameter("s")
@@ -425,7 +425,7 @@ class YouTubeStreamExtractor @Inject constructor(
                 YoutubeJavaScriptPlayerManager.deobfuscateSignature(videoId, encryptedSignature)
             }.onFailure { error ->
                 // Exception messages can contain URLs or cipher material: log types only.
-                Log.w("LastWaveCipher", "stage=signature error=${error.javaClass.simpleName} cause=${error.cause?.javaClass?.simpleName}")
+                Log.w("NexoraCipher", "stage=signature error=${error.javaClass.simpleName} cause=${error.cause?.javaClass?.simpleName}")
             }.getOrNull() ?: return null
             if (resolvedUrl.toHttpUrlOrNull() == null) return null
             resolvedUrl = appendQueryParameterPreservingUrl(

@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2026 LastWave Authors (https://github.com/Clash-Projects/LastWave-Native)
+ * Copyright (C) 2026 Nexora Authors (https://github.com/Clash-Projects/Nexora-Native)
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file is part of LastWave.
+ * This file is part of Nexora.
  *
- * LastWave is free software: you can redistribute it and/or modify
+ * Nexora is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * LastWave is distributed in the hope that it will be useful,
+ * Nexora is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with LastWave. If not, see <https://www.gnu.org/licenses/>.
+ * along with Nexora. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.lastwave.app.presence
@@ -32,10 +32,10 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 /**
- * Discord Rich Presence ("Listening to LastWave") payload builder.
+ * Discord Rich Presence ("Listening to Nexora") payload builder.
  *
  * Ported field for field from the desktop client
- * (`LastWave-Desktop/lib/features/presence/discord_presence_service.dart`) so a
+ * (`Nexora-Desktop/lib/features/presence/discord_presence_service.dart`) so a
  * user's profile reads the same on both apps: same application id, same `type`,
  * same line layout, same two buttons, same asset slots, same clip lengths. Two
  * Android-specific deviations keep the card readable without a mouse (see
@@ -46,18 +46,18 @@ import kotlinx.serialization.json.putJsonArray
  *
  * The card one [buildActivity] call produces:
  * ```
- *   Listening to LastWave · Song title  <- type 2 + name (see [activityName])
+ *   Listening to Nexora · Song title  <- type 2 + name (see [activityName])
  *   ┌────┐  Song title               <- details
  *   │art │  Artist · Hi-Res Lossless · 24-bit · 96 kHz   <- state, one line
  *   │  ○ │  (brand badge)            <- small_image
  *   └────┘  ▁▁▁▁▁▁ 1:04 / 3:47       <- from the timestamps
- *   [ Listen On LastWave ]           <- opens the track
- *   [ Get LastWave ]                 <- opens this project's releases
+ *   [ Listen On Nexora ]           <- opens the track
+ *   [ Get Nexora ]                 <- opens this project's releases
  * ```
  *
  * `status_display_type` is deliberately left unset so the compact member-list
  * line falls back to the activity name: with [activityName] that reads
- * "Listening to LastWave · <song>". The audio-format line rides in `state` on
+ * "Listening to Nexora · <song>". The audio-format line rides in `state` on
  * the same line as the artist: Discord on Android collapses a newline in
  * `state` to an ellipsis and has no hover, so a separate line (or only the
  * `small_text` tooltip) would hide the quality on mobile. The badge tooltip
@@ -84,13 +84,13 @@ object DiscordPresence {
     const val APPLICATION_ID = "1552563991426105414"
 
     /**
-     * Repo the card's buttons open — this Android project, so "Get LastWave"
+     * Repo the card's buttons open — this Android project, so "Get Nexora"
      * lands on the native build.
      */
-    const val PROJECT_URL = "https://github.com/Clash-Projects/LastWave-Native"
+    const val PROJECT_URL = "https://github.com/Clash-Projects/Nexora-Native"
     const val RELEASES_URL = "$PROJECT_URL/releases"
-    const val DEFAULT_BUTTON_1 = "Listen On LastWave"
-    const val DEFAULT_BUTTON_2 = "Get LastWave"
+    const val DEFAULT_BUTTON_1 = "Listen On Nexora"
+    const val DEFAULT_BUTTON_2 = "Get Nexora"
 
     /** Discord truncates nothing for us: over-long fields are dropped. */
     const val MAX_FIELD = 120
@@ -120,7 +120,7 @@ object DiscordPresence {
      * upload is required.
      */
     const val DISCORD_LOGO_URL =
-        "https://raw.githubusercontent.com/Clash-Projects/LastWave-Native/main/assets/lastwave_logo.png"
+        "https://raw.githubusercontent.com/Clash-Projects/Nexora-Native/main/assets/lastwave_logo.png"
 
     /** 2 = "Listening to". */
     const val TYPE_LISTENING = 2
@@ -144,12 +144,12 @@ object DiscordPresence {
     /**
      * The activity name. Discord prefixes it with "Listening to" in the member
      * list, so appending the track makes the compact line read
-     * `Listening to LastWave · <song>`. The plain app name is used when there
+     * `Listening to Nexora · <song>`. The plain app name is used when there
      * is no track text.
      */
     fun activityName(title: String): String {
         val trimmed = title.trim()
-        return if (trimmed.isEmpty()) "LastWave" else "LastWave \u00B7 " + clip(trimmed)
+        return if (trimmed.isEmpty()) "Nexora" else "Nexora \u00B7 " + clip(trimmed)
     }
 
     /**
@@ -162,7 +162,7 @@ object DiscordPresence {
      * visible on both platforms, so the audio format never depends on hovering.
      */
     fun stateLine(artist: String, album: String?, quality: String): String {
-        val head = artist.trim().ifEmpty { album?.trim()?.takeIf { it.isNotEmpty() } ?: "LastWave" }
+        val head = artist.trim().ifEmpty { album?.trim()?.takeIf { it.isNotEmpty() } ?: "Nexora" }
         return clip(if (quality.isEmpty()) head else "$head \u00B7 $quality", MAX_STATE)
     }
 
@@ -301,10 +301,10 @@ object DiscordPresence {
         // audio-format line in the brand badge's tooltip.
         val smallText = clip(
             when {
-                !playing && quality.isEmpty() -> "LastWave \u00B7 Paused"
-                !playing -> "LastWave \u00B7 Paused \u00B7 $quality"
-                quality.isEmpty() -> "LastWave"
-                else -> "LastWave \u00B7 $quality"
+                !playing && quality.isEmpty() -> "Nexora \u00B7 Paused"
+                !playing -> "Nexora \u00B7 Paused \u00B7 $quality"
+                quality.isEmpty() -> "Nexora"
+                else -> "Nexora \u00B7 $quality"
             },
         )
 

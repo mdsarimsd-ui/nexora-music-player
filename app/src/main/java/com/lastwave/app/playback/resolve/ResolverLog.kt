@@ -47,7 +47,7 @@ object AndroidResolverLogger : ResolverLogger {
         )
     }
 
-    private const val TAG = "LastWaveResolver"
+    private const val TAG = "NexoraResolver"
 }
 
 internal fun elapsedSince(startedNanos: Long): Long =
@@ -68,5 +68,5 @@ internal object MetadataLog {
         android.util.Log.i(TAG, "[METADATA_SKIPPED] source=$source videoId=${videoId.orEmpty()} priority=low")
     }
 
-    private const val TAG = "LastWaveMetadata"
+    private const val TAG = "NexoraMetadata"
 }

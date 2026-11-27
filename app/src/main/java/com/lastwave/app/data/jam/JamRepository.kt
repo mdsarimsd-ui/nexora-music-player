@@ -84,7 +84,7 @@ class JamRepository @Inject constructor(
     private val settingsPreferences: SettingsPreferences,
 ) {
     companion object {
-        private const val TAG = "LastWaveJam"
+        private const val TAG = "NexoraJam"
         // Default production sync daemon address
         const val DEFAULT_JAM_SERVER_WS = "wss://jam.clashgram.org/ws"
         const val DEFAULT_JAM_SERVER_HTTP = "https://jam.clashgram.org"
@@ -166,7 +166,7 @@ class JamRepository @Inject constructor(
 
     /**
      * Shareable https link. Opens the web invite page, which launches whichever
-     * LastWave is installed and previews with the room code in chat apps.
+     * Nexora is installed and previews with the room code in chat apps.
      */
     fun inviteLink(code: String): String {
         val base = serverUrl

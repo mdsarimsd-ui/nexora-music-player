@@ -60,12 +60,12 @@ data class ThemeUiState(
     /** Haptic feedback on taps, buttons, toggles and gestures (Settings toggle). */
     val uiHaptics: Boolean = true,
     /** True when the "Dynamic Now Playing" artwork override is currently
-     *  driving the schemes. LastWaveTheme uses this so S+ system dynamic
+     *  driving the schemes. NexoraTheme uses this so S+ system dynamic
      *  (wallpaper) only takes over when no now-playing color is active:
      *  now-playing wins, wallpaper-dynamic is next, manual/mono last. */
     val isNowPlayingThemed: Boolean = false,
-    /** Dedicated LastWave Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
-    val isLastWaveTheme: Boolean = false,
+    /** Dedicated Nexora Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
+    val isNexoraTheme: Boolean = false,
     val useLegacyColors: Boolean = false,
     val appIcon: AppIcon = AppIcon.DEFAULT,
 )
@@ -201,7 +201,7 @@ class ThemeRepository @Inject constructor(
 
     /** Wallpaper seed for DYNAMIC mode on pre-S devices (and as the data-layer
      *  fallback on S+ — the real S+ wallpaper Monet scheme is applied in
-     *  LastWaveTheme via dynamicDark/LightColorScheme, which are @Composable
+     *  NexoraTheme via dynamicDark/LightColorScheme, which are @Composable
      *  and can never be called from here). Reads only
      *  WallpaperManager.getWallpaperColors(), safe on any thread. */
     private fun getSystemWallpaperColorHex(): String? {
@@ -244,16 +244,16 @@ class ThemeRepository @Inject constructor(
     ) { prefs: ThemePrefs, dynamic: String?, nowPlaying: ArtworkAccent?, misc: MiscSettings ->
         val isAmoled = prefs.amoled
         val isGlass = prefs.liquidGlass
-        val isLastWave = prefs.lastWaveTheme
+        val isNexora = prefs.lastWaveTheme
         val useLegacy = prefs.useLegacyColors
-        val nowPlayingActive = misc.dynamicNowPlayingEnabled && nowPlaying != null && !isLastWave
-        // Real wallpaper Monet on S+. Built here (not only in LastWaveTheme)
+        val nowPlayingActive = misc.dynamicNowPlayingEnabled && nowPlaying != null && !isNexora
+        // Real wallpaper Monet on S+. Built here (not only in NexoraTheme)
         // so widgets and the media notification use the same colors as the UI.
-        val systemDynamic = if (prefs.accentMode == AccentMode.DYNAMIC && !isLastWave) systemDynamicSchemes(isAmoled, useLegacy) else null
+        val systemDynamic = if (prefs.accentMode == AccentMode.DYNAMIC && !isNexora) systemDynamicSchemes(isAmoled, useLegacy) else null
         val (baseDark, baseLight) = when {
-            isLastWave -> {
-                val dark = Md3SchemeBuilder.buildLastWaveDarkScheme(isAmoled, isGlass, useLegacy)
-                val light = Md3SchemeBuilder.buildLastWaveLightScheme(isGlass)
+            isNexora -> {
+                val dark = Md3SchemeBuilder.buildNexoraDarkScheme(isAmoled, isGlass, useLegacy)
+                val light = Md3SchemeBuilder.buildNexoraLightScheme(isGlass)
                 dark to light
             }
             systemDynamic != null -> systemDynamic
@@ -264,7 +264,7 @@ class ThemeRepository @Inject constructor(
             }
             prefs.accentMode == AccentMode.DYNAMIC -> {
                 // Wallpaper seed for the data layer. On S+ the real Monet
-                // dynamic scheme is applied in LastWaveTheme (composable);
+                // dynamic scheme is applied in NexoraTheme (composable);
                 // here we only need a wallpaper-derived fallback so pre-S
                 // and cold-start frames already show the wallpaper accent
                 // instead of the default red or monochrome.
@@ -293,7 +293,7 @@ class ThemeRepository @Inject constructor(
             colorScheme = darkScheme,
             amoled = isAmoled,
             mode = prefs.accentMode,
-            accentColorHex = if (isLastWave) "#C9FB00" else prefs.accentColor,
+            accentColorHex = if (isNexora) "#C9FB00" else prefs.accentColor,
             useCustomFont = misc.useCustomFont,
             useBoldFont = misc.useBoldFont,
             liquidGlass = isGlass,
@@ -302,7 +302,7 @@ class ThemeRepository @Inject constructor(
             hideNavTabs = prefs.hideNavTabs,
             uiHaptics = prefs.uiHaptics,
             isNowPlayingThemed = nowPlayingActive,
-            isLastWaveTheme = isLastWave,
+            isNexoraTheme = isNexora,
             useLegacyColors = useLegacy,
             appIcon = prefs.appIcon,
         )
@@ -321,7 +321,7 @@ class ThemeRepository @Inject constructor(
             liquidGlass = true,
             md3NavBar = false,
             hideNavTabs = false,
-            isLastWaveTheme = false,
+            isNexoraTheme = false,
             useLegacyColors = false,
             appIcon = AppIcon.DEFAULT,
         ),
@@ -331,7 +331,7 @@ class ThemeRepository @Inject constructor(
         themePreferences.setThemeMode(mode)
     }
 
-    suspend fun setLastWaveTheme(enabled: Boolean) = themePreferences.setLastWaveTheme(enabled)
+    suspend fun setNexoraTheme(enabled: Boolean) = themePreferences.setNexoraTheme(enabled)
 
     suspend fun setLegacyColors(enabled: Boolean) = themePreferences.setLegacyColors(enabled)
 

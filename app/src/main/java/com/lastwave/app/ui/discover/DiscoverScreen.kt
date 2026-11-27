@@ -283,7 +283,7 @@ fun DiscoverScreen(onBack: () -> Unit = {}, viewModel: DiscoverViewModel = hiltV
         TrackContextMenuSheet(
             target = TrackMenuTarget.Track(track.name, track.artist, track.url),
             capabilities = TrackMenuCapabilities(showDeleteScrobble = true),
-            onPlayInLastWave = { playFromDiscover(track) },
+            onPlayInNexora = { playFromDiscover(track) },
             onDismiss = { menuTrack = null },
         )
     }

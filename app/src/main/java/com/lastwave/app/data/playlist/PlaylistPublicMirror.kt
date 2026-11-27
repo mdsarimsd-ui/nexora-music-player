@@ -39,7 +39,7 @@ data class PlaylistMirrorFile(
     val playlists: List<PlaylistMirrorEntry>,
 )
 
-/** Public Downloads/LastWave JSON mirror. Room remains the fast runtime
+/** Public Downloads/Nexora JSON mirror. Room remains the fast runtime
  * source; this file is the uninstall and destructive-migration recovery. */
 @Singleton
 class PlaylistPublicMirror @Inject constructor(
@@ -86,7 +86,7 @@ class PlaylistPublicMirror @Inject constructor(
 
     suspend fun importAndMerge(content: String): Result<Int> = mutex.withLock {
         val mirror = decode(content)
-            ?: return@withLock Result.failure(IllegalArgumentException("Invalid LastWave playlist JSON"))
+            ?: return@withLock Result.failure(IllegalArgumentException("Invalid Nexora playlist JSON"))
         try {
             dao.upsertAll(mirror.playlists.map { it.toEntity() })
             writeLocked(dao.getAll()).onFailure { error ->
@@ -105,7 +105,7 @@ class PlaylistPublicMirror @Inject constructor(
         null
     }
 
-    /** User-initiated only (Export backup): also copies the library to Download/LastWave. */
+    /** User-initiated only (Export backup): also copies the library to Download/Nexora. */
     suspend fun exportToDownloads(): Result<Unit> = mutex.withLock {
         writeLocked(dao.getAll(), toDownloads = true)
     }

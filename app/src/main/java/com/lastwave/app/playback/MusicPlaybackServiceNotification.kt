@@ -571,7 +571,7 @@ internal fun MusicPlaybackService.createNotificationChannel() {
             runCatching { nm.deleteNotificationChannel(LEGACY_CHANNEL_ID_V1) }
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, "Music playback", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "Native LastWave playback controls"
+                    description = "Native Nexora playback controls"
                     setShowBadge(false)
                     setSound(null, null)
                     enableVibration(false)

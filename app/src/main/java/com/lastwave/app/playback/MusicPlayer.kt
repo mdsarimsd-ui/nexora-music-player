@@ -221,7 +221,7 @@ class MusicPlayer @Inject constructor(
     private val streamResolutionWakeLock by lazy {
         (appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "LastWave:StreamResolutionWakeLock",
+            "Nexora:StreamResolutionWakeLock",
         )?.apply { setReferenceCounted(false) }
     }
     internal val extractorsFactory: ExtractorsFactory by lazy {
@@ -1040,7 +1040,7 @@ class MusicPlayer @Inject constructor(
                     }
                 }
             android.util.Log.i(
-                "LastWaveDecode",
+                "NexoraDecode",
                 "track='${_state.value.current?.title}' audioFormats=${audioFormats.joinToString().ifBlank { "none" }}",
             )
         }
@@ -6428,7 +6428,7 @@ class MusicPlayer @Inject constructor(
         // files was blocking playback even when the YouTube URL was cached.
         if (!deepScan) return null
 
-        // 4. Fallback: Search physical download directories (Music/<folder> + legacy Music/LastWave)
+        // 4. Fallback: Search physical download directories (Music/<folder> + legacy Music/Nexora)
         val candidateExtensions = listOf("flac", "m4a", "mp3", "opus", "ogg", "webm", "wav")
         val candidateBases = listOf(
             "$artist - $title",
@@ -8162,7 +8162,7 @@ class MusicPlayer @Inject constructor(
             } finally {
                 trace.finish(switchOutcome)?.let { report ->
                     val line = report.logLine()
-                    android.util.Log.i("LastWaveSwitch", line)
+                    android.util.Log.i("NexoraSwitch", line)
                     PlaybackDiagnostics.event("QualitySwitch", line)
                 }
                 // Only its own: a newer switch may already be showing.
@@ -8637,7 +8637,7 @@ class MusicPlayer @Inject constructor(
                     live.clearMediaItems()
                     hotSwapActive = false
                     android.util.Log.i(
-                        "LastWaveSwitch",
+                        "NexoraSwitch",
                         "fadeMs=${SystemClock.elapsedRealtime() - fadeStartedAtMs} track='${track.title.take(48)}'",
                     )
                 }
@@ -9399,7 +9399,7 @@ class MusicPlayer @Inject constructor(
         const val TICKER_PERSIST_INTERVAL_MS = 2_000L
         /** Collapsed-player cadence: the mini bar updates at 4 fps. */
         const val VISIBLE_TICKER_CADENCE_MS = 250L
-        /** Steady-state progress ticker cadence while no LastWave screen is visible. */
+        /** Steady-state progress ticker cadence while no Nexora screen is visible. */
         const val BACKGROUND_TICKER_CADENCE_MS = 1_000L
         /** In-app volume is saved this long after the slider stops moving. */
         const val APP_VOLUME_PERSIST_DEBOUNCE_MS = 400L

@@ -300,7 +300,7 @@ fun MainShell(
     var joinSupportDismissedThisSession by rememberSaveable { mutableStateOf(false) }
 
     val currentSettings = settings
-    // Nexora: the LastWave community/support popup stays off.
+    // Nexora: the Nexora community/support popup stays off.
     val shouldShowJoinSupport = false
 
     if (shouldShowJoinSupport) {
@@ -821,7 +821,7 @@ fun MainShell(
     }
 
     if (showJamSheet) {
-        com.lastwave.app.ui.jam.LastWaveJamSheet(
+        com.lastwave.app.ui.jam.NexoraJamSheet(
             onDismiss = { showJamSheet = false },
         )
     }
@@ -1450,7 +1450,7 @@ private fun JoinSupportDialog(
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "LastWave Discord",
+                                text = "Nexora Discord",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,

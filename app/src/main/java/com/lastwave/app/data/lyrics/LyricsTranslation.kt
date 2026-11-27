@@ -72,7 +72,7 @@ object LyricsTranslation {
     private const val MAX_CACHE_BYTES = 2L * 1024L * 1024L
     private const val MAX_BATCH_CHARS = 3_500
     private const val MAX_PARALLEL_REQUESTS = 2
-    private const val USER_AGENT = "LastWave/1.0"
+    private const val USER_AGENT = "Nexora/1.0"
     // Input Tools changes ASCII digits to the destination script, so match the
     // private-use wrapper rather than assuming the counter remains ASCII.
     private val markerRegex = Regex("\\uE000[^\\uE001]*\\uE001")

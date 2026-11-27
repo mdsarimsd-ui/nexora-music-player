@@ -261,7 +261,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "audio.stop_on_recents",
                     title = "Stop Playback When Swiped Away",
-                    subtitle = "Stop music when LastWave is removed from Recents",
+                    subtitle = "Stop music when Nexora is removed from Recents",
                     keywords = listOf(
                         "recents", "swipe", "swipe away", "stop playback", "background playback",
                         "continue playing", "task removed", "kill app", "close app"
@@ -500,7 +500,7 @@ object SettingsSearchIndex {
             add(
                 SettingsEntry(
                     id = "appearance.lastwave_theme",
-                    title = "LastWave Signature Theme",
+                    title = "Nexora Signature Theme",
                     subtitle = "Bespoke logo palette with Electric Lime and Obsidian Teal",
                     keywords = listOf(
                         "lastwave theme", "brand theme", "special theme", "logo theme", "lime",
@@ -1033,7 +1033,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "youtube.shown_playlists",
                     title = "Show / Hide Account Playlists",
-                    subtitle = "Control which playlists from your YouTube account appear in LastWave",
+                    subtitle = "Control which playlists from your YouTube account appear in Nexora",
                     keywords = listOf(
                         "show playlists", "hide playlists", "visibility", "account playlists",
                         "library visibility", "filter playlists"
@@ -1405,7 +1405,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "backup.restore",
                     title = "Restore from Backup",
-                    subtitle = "Import a previously saved LastWave backup file to restore settings & playlists",
+                    subtitle = "Import a previously saved Nexora backup file to restore settings & playlists",
                     keywords = listOf(
                         "restore", "import backup", "recover data", "load backup", "restore playlists",
                         "restore settings", "json restore"

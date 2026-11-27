@@ -34,7 +34,7 @@ object NetworkModule {
     // data already held by Room and the dedicated artwork/media caches.
     private const val HTTP_CACHE_SIZE = 8L * 1024 * 1024
     private const val BROWSER_USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 LastWave/1.0"
+        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 Nexora/1.0"
 
     @Provides
     @Singleton
@@ -149,7 +149,7 @@ object NetworkModule {
         }
 
         private companion object {
-            const val TAG = "LastWaveTraffic"
+            const val TAG = "NexoraTraffic"
         }
     }
 

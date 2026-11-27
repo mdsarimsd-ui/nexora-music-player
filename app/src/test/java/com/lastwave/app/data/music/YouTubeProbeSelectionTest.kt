@@ -13,7 +13,7 @@ class YouTubeProbeSelectionTest {
         val request = playbackProbeRequest(
             url = "https://example.test/videoplayback?itag=140",
             headers = mapOf(
-                "User-Agent" to "LastWave",
+                "User-Agent" to "Nexora",
                 "Origin" to "https://www.youtube.com",
                 "Referer" to "https://www.youtube.com/watch?v=abc",
             ),
@@ -21,7 +21,7 @@ class YouTubeProbeSelectionTest {
         assertEquals("bytes=0-1048575", request.header("Range"))
         assertEquals("audio/*,*/*;q=0.8", request.header("Accept"))
         assertEquals("identity", request.header("Accept-Encoding"))
-        assertEquals("LastWave", request.header("User-Agent"))
+        assertEquals("Nexora", request.header("User-Agent"))
     }
 
     @Test

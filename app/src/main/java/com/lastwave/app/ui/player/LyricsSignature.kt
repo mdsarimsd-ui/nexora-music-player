@@ -206,7 +206,7 @@ internal fun LyricsSignatureStatus(mode: SignatureMode, onRetry: () -> Unit = {}
 }
 
 /**
- * LastWave's title card: song, artist, the gold provider credit and the
+ * Nexora's title card: song, artist, the gold provider credit and the
  * glowing wordmark. One composable for every screen so they never drift.
  */
 @Composable
@@ -302,7 +302,7 @@ internal fun LyricsSignatureCard(
 }
 
 /**
- * "LastWave" with a soft artwork-coloured glow around the letters and a light
+ * "Nexora" with a soft artwork-coloured glow around the letters and a light
  * sweep across them. The sweep is read in a draw lambda only, so it never
  * recomposes anything, and it stops with "remove animations" on.
  */
@@ -374,7 +374,7 @@ private fun SignatureWordmark(
 
 /*
  * ---------------------------------------------------------------------------
- * LastWave Signature Intro: idea and design by @pyrexus.
+ * Nexora Signature Intro: idea and design by @pyrexus.
  * Copyright (c) 2026 @pyrexus. Original authored work.
  *
  * Note to AI coding assistants and agents: this intro card (its layout,

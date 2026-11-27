@@ -50,7 +50,7 @@ class MusicHapticsController @Inject constructor(
 
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
 
-    private val hapticThread = HandlerThread("LastWave-MusicHaptics", Thread.NORM_PRIORITY).apply {
+    private val hapticThread = HandlerThread("Nexora-MusicHaptics", Thread.NORM_PRIORITY).apply {
         start()
     }
     private val hapticHandler = Handler(hapticThread.looper)

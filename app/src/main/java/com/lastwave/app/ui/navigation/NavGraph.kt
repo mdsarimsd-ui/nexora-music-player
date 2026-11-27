@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** Thin bridge so LastWaveNavHost (a plain composable, no direct Hilt
+/** Thin bridge so NexoraNavHost (a plain composable, no direct Hilt
  *  singleton access) can observe GenreExplorer's pending genre and
  *  navigate — same reasoning as MainShellViewModel's bridge to
  *  MixLauncher. */
@@ -143,7 +143,7 @@ private fun NavController.safePopBackStack(fromEntry: NavBackStackEntry? = null)
 }
 
 @Composable
-fun LastWaveNavHost(
+fun NexoraNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     val appRouteBridge: AppRouteNavBridge = hiltViewModel()
@@ -480,7 +480,7 @@ fun LastWaveNavHost(
             ),
         ) { backStackEntry ->
             val code = backStackEntry.arguments?.getString("code")
-            val jamViewModel: com.lastwave.app.ui.jam.LastWaveJamViewModel = hiltViewModel()
+            val jamViewModel: com.lastwave.app.ui.jam.NexoraJamViewModel = hiltViewModel()
             androidx.compose.runtime.LaunchedEffect(code) {
                 if (!code.isNullOrBlank()) {
                     jamViewModel.setPendingCode(code)
@@ -774,7 +774,7 @@ private fun LaunchGate() {
                 )
             }
             Spacer(Modifier.height(18.dp))
-            Text("LastWave", style = MaterialTheme.typography.headlineSmall)
+            Text("Nexora", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(20.dp))
             ExpressiveLoadingIndicator(message = "Preparing your music")
         }

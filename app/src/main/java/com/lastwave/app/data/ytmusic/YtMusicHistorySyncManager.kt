@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Reports songs genuinely listened to in LastWave to the connected YouTube
+ * Reports songs genuinely listened to in Nexora to the connected YouTube
  * Music account's watch history, independent of where the audio came from
  * (Qobuz/FLAC, YouTube, or a downloaded file). Playback itself is never
  * touched: matching and submission run on background coroutines, audio keeps

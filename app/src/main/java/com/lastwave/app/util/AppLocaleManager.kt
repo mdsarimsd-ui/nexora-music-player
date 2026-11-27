@@ -46,7 +46,7 @@ class AppLocaleManager @Inject constructor(
     @Volatile
     private var started = false
 
-    /** Call once from LastWaveApplication.onCreate. Never throws. */
+    /** Call once from NexoraApplication.onCreate. Never throws. */
     fun start() {
         if (started) return
         started = true

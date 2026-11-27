@@ -32,7 +32,7 @@ class ThemeViewModel @Inject constructor(
         themeRepository.setThemeMode(mode)
     }
 
-    fun setLastWaveTheme(enabled: Boolean) = viewModelScope.launch {
-        themeRepository.setLastWaveTheme(enabled)
+    fun setNexoraTheme(enabled: Boolean) = viewModelScope.launch {
+        themeRepository.setNexoraTheme(enabled)
     }
 }

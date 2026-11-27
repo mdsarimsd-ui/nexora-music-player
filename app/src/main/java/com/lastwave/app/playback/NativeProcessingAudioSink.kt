@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2026 LastWave Authors (https://github.com/Clash-Projects/LastWave-Native)
+ * Copyright (C) 2026 Nexora Authors (https://github.com/Clash-Projects/Nexora-Native)
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file is part of LastWave.
+ * This file is part of Nexora.
  *
- * LastWave is free software: you can redistribute it and/or modify
+ * Nexora is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * LastWave is distributed in the hope that it will be useful,
+ * Nexora is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with LastWave. If not, see <https://www.gnu.org/licenses/>.
+ * along with Nexora. If not, see <https://www.gnu.org/licenses/>.
  */
 
 @file:OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -437,7 +437,7 @@ class NativeProcessingAudioSink(
             } else {
                 // 16/24/32-bit integer PCM straight through in its native
                 // packing: the source rate opens the AudioTrack, so no
-                // LastWave resampler runs at any depth.
+                // Nexora resampler runs at any depth.
                 safeResetProcessor()
                 configureUsbOutput(format, format.pcmEncoding, outputChannels)
                 mixerIgnoresVolume = usbOutput?.isConfigured() == true

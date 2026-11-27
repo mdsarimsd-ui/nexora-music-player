@@ -528,7 +528,7 @@ class PlaylistRepository @Inject constructor(
                 return@withLock persist(
                     entity.copy(
                         title = LIKED_SONGS_TITLE,
-                        subtitle = "Songs you like in LastWave",
+                        subtitle = "Songs you like in Nexora",
                         mode = LIKED_SONGS_MODE,
                         isPinned = true,
                     ),
@@ -537,7 +537,7 @@ class PlaylistRepository @Inject constructor(
         }
         val created = save(
             title = LIKED_SONGS_TITLE,
-            subtitle = "Songs you like in LastWave",
+            subtitle = "Songs you like in Nexora",
             mode = LIKED_SONGS_MODE,
             tracks = emptyList(),
         )
@@ -639,7 +639,7 @@ class PlaylistRepository @Inject constructor(
         syncPublicMirrorInBackground()
     }
 
-    /** Explicit export only: writes the playlist JSON to Download/LastWave. */
+    /** Explicit export only: writes the playlist JSON to Download/Nexora. */
     suspend fun exportPublicMirror(): Result<Unit> = publicMirror.exportToDownloads()
 
     private fun SavedPlaylistEntity.withTracks(tracks: List<GeneratedTrack>): SavedPlaylistEntity =

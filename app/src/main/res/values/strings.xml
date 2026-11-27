@@ -117,8 +117,8 @@
     <string name="app_icon_white_sub">White logo with black strip lines</string>
     <string name="app_icon_black">Obsidian Black</string>
     <string name="app_icon_black_sub">Black logo with white strip lines</string>
-    <string name="settings_lastwave_theme">Nexora Signature Theme</string>
-    <string name="settings_lastwave_theme_sub">Bespoke logo palette • Electric Lime &amp; Obsidian Teal</string>
+    <string name="settings_nexora_theme">Nexora Signature Theme</string>
+    <string name="settings_nexora_theme_sub">Bespoke logo palette • Electric Lime &amp; Obsidian Teal</string>
     <string name="settings_amoled">AMOLED Mode</string>
     <string name="settings_amoled_sub">Pure black background (Dark mode only)</string>
     <string name="settings_legacy_colors">Use legacy colours</string>

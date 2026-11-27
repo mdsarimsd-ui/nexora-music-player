@@ -1,7 +1,7 @@
 # Nexora Changelog
 
 ## 1.0.0 — First release
-- Rebranded LastWave as Nexora (new name, logo and icon; the app experience is unchanged)
+- Rebranded Nexora as Nexora (new name, logo and icon; the app experience is unchanged)
 - Musicolet-style equalizer additions: Bass Boost and 3D Surround sliders with the classic preset family (Normal, Dance, Folk, Heavy Metal, Hip Hop and more)
 
 # Changelog
@@ -72,7 +72,7 @@
 ## [5.0.0] - 2026-10-30
 
 ### Added & Improved
-- **LastWave Jam (Listen Together & Live Chat):** Host or join real-time synchronized listening rooms with friends, featuring low-latency playback sync, shared queue control, and built-in live room chat.
+- **Nexora Jam (Listen Together & Live Chat):** Host or join real-time synchronized listening rooms with friends, featuring low-latency playback sync, shared queue control, and built-in live room chat.
 - **Synced Music & Podcast Videos (With Lossless Audio):** Watch full Official Music Videos and video podcasts directly inside the player via a native high-frame-rate video surface, seamlessly synchronized to your active Hi-Res Lossless FLAC or Opus audio stream without sacrificing audio fidelity.
 - **Native Spotify Integration & Canvas:** Connect your Spotify account for native one-tap playlist and liked-track transfers alongside looping high-resolution Spotify Canvas visuals inside Now Playing.
 - **Full Podcast Support:** Browse, stream, and follow podcast shows and episodes with dedicated episode queues, chapter navigation, and persistent playback progress.
@@ -102,7 +102,7 @@
 ## [4.3.0] - 2026-10-17
 
 ### Added & Improved
-- **Share Lyrics Card:** Select up to 5 lines from synced or plain lyrics to generate styled lyric cards. Choose between Song Mode (album art header + track metadata + lyrics) and Lyrics Mode (clean typography), customize with dynamic palette extraction (cover tones, dominant, muted, dark, accent, or LastWave Lime), and export via the system share sheet or save directly to Pictures/LastWave with full multilingual font rendering (Latin, Devanagari, Arabic, CJK).
+- **Share Lyrics Card:** Select up to 5 lines from synced or plain lyrics to generate styled lyric cards. Choose between Song Mode (album art header + track metadata + lyrics) and Lyrics Mode (clean typography), customize with dynamic palette extraction (cover tones, dominant, muted, dark, accent, or Nexora Lime), and export via the system share sheet or save directly to Pictures/Nexora with full multilingual font rendering (Latin, Devanagari, Arabic, CJK).
 - **Lyrics Romanization & Translation:** Added inline romanization and real-time translation support for non-Latin scripts directly within the lyrics view.
 - **Expanded Lyrics Providers:** Integrated additional lyrics sources for broader catalog coverage, higher match rates, and more reliable synced timestamps.
 - **Faster Playback & Multi-Provider Addons:** Optimized stream initialization for faster playback startup and introduced simultaneous multi-provider addon support for an expanded, unified library.
@@ -181,8 +181,8 @@
 - **Playlist Downloads:** Added support for downloading complete playlists for offline listening, making it easier to manage and save large collections.
 - **True Bit-Perfect Playback:** Improved bit-perfect playback with untouched DAC routing, preserving the audio output path without unnecessary modification or processing.
 - **YouTube Recommendation Algorithm:** The entire recommendation system has been shifted from Last.fm to YouTube, providing a new recommendation backend while making Last.fm completely optional.
-- **Guest Login:** Added Guest Login, allowing users to use LastWave without creating or connecting an account.
-- **Native Spotify & Apple Music Playlist Import:** Added native playlist importing from Spotify and Apple Music, allowing users to bring their existing playlists directly into LastWave.
+- **Guest Login:** Added Guest Login, allowing users to use Nexora without creating or connecting an account.
+- **Native Spotify & Apple Music Playlist Import:** Added native playlist importing from Spotify and Apple Music, allowing users to bring their existing playlists directly into Nexora.
 
 ### Changed & Improved
 - **Playback & Audio Improvements:** Improved playback reliability, audio handling, DAC behavior, and various edge cases across the playback pipeline.
@@ -195,7 +195,7 @@
 ## Unreleased
 
 ### Fixed
-- **Playback continuing after LastWave was swiped from Recents.**
+- **Playback continuing after Nexora was swiped from Recents.**
   `MusicPlaybackService.onTaskRemoved()` was a no-op that relied on
   `android:stopWithTask="true"`, but the service deliberately stays a
   media-playback foreground service whenever a track is loaded (even paused),
@@ -274,7 +274,7 @@
   the same failure. Continuation failures now keep the collected prefix and
   return it with `isComplete = false` (null is kept only when zero tracks
   loaded, preserving every caller's existing contract); failures are logged
-  to logcat under `LastWavePlaylist` with browseId + stage for diagnosis.
+  to logcat under `NexoraPlaylist` with browseId + stage for diagnosis.
   `FeedPlaylistDetailViewModel` shows truncated results with an inline
   "Some tracks couldn't load. Retry." affordance instead of the dead error,
   and `YtMusicLibraryManager` no longer poisons the disk cache / track
@@ -289,7 +289,7 @@
 ### Author: musaibbhat120605
 **Date:** September 16, 2026
 
-###Musaib Bhat will step down as the developer of LastWave on 16 September 2026. His contributions have been invaluable, and his work will always remain a cornerstone for our community.
+###Musaib Bhat will step down as the developer of Nexora on 16 September 2026. His contributions have been invaluable, and his work will always remain a cornerstone for our community.
 
 #### Added
 - **SongPlayStatsEntity + SongPlayStatsDao** — local per-track listening stats (total play time, skip count, play count, last played).
@@ -366,7 +366,7 @@
 
 ### Added
 - **Offline playback priority across all screens (Fixes #31).**
-  `MusicPlayer.resolveTrackAudioStream()` now checks the local Room database (`DownloadedTrackDao`) and verifies file presence on disk before attempting remote network resolution (Lossless / YouTube Music / InnerTube). When a track has already been downloaded, LastWave plays the local media file directly without making network calls, enabling seamless offline playback across Home, Search, Playlists, Album, and Artist screens and saving cellular data when online.
+  `MusicPlayer.resolveTrackAudioStream()` now checks the local Room database (`DownloadedTrackDao`) and verifies file presence on disk before attempting remote network resolution (Lossless / YouTube Music / InnerTube). When a track has already been downloaded, Nexora plays the local media file directly without making network calls, enabling seamless offline playback across Home, Search, Playlists, Album, and Artist screens and saving cellular data when online.
 
   Files changed:
   `app/src/main/java/com/lastwave/app/playback/MusicPlayer.kt`

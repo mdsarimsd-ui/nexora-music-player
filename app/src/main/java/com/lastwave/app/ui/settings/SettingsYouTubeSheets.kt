@@ -33,8 +33,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.FolderOpen
-import com.lastwave.app.ui.jam.LastWaveJamSheet
-import com.lastwave.app.ui.jam.LastWaveJamViewModel
+import com.lastwave.app.ui.jam.NexoraJamSheet
+import com.lastwave.app.ui.jam.NexoraJamViewModel
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -265,7 +265,7 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 
-/** Controls which connected-account playlists appear in LastWave. This is
+/** Controls which connected-account playlists appear in Nexora. This is
  * intentionally independent from importing and two-way sync. */
 /**
  * Lets the user pick which YouTube channel/profile answers inside the
@@ -473,7 +473,7 @@ internal fun YouTubeLibraryVisibilitySheet(
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.set_yt_shown_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        "Choose which account playlists appear in LastWave",
+                        "Choose which account playlists appear in Nexora",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

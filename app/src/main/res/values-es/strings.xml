@@ -402,8 +402,8 @@
     <string name="app_icon_white_sub">Logotipo blanco con franjas negras</string>
     <string name="app_icon_black">Negro obsidiana</string>
     <string name="app_icon_black_sub">Logotipo negro con franjas blancas</string>
-    <string name="settings_lastwave_theme">Tema distintivo de Nexora</string>
-    <string name="settings_lastwave_theme_sub">Paleta a medida del logotipo • Lima eléctrica y verde azulado obsidiana</string>
+    <string name="settings_nexora_theme">Tema distintivo de Nexora</string>
+    <string name="settings_nexora_theme_sub">Paleta a medida del logotipo • Lima eléctrica y verde azulado obsidiana</string>
     <string name="settings_md3_nav_bar">Material 3 Barra de navegación</string>
     <string name="settings_md3_nav_bar_sub">Utilice la navegación inferior clásica de ancho completo en lugar del muelle flotante</string>
     <string name="settings_hide_nav_tabs">Ocultar pestañas de navegación</string>

@@ -50,7 +50,7 @@ private data class PaxWord(
  * timings (`part: true` = continuation of the previous word, e.g.
  * "with"+"drawals"). The envelope's `lrc`/`plain` fields are the fallback
  * when a track has no syllable timings. Every request identifies as
- * `LastWave` in User-Agent.
+ * `Nexora` in User-Agent.
  */
 @Singleton
 class AppleMusicLyricsApi @Inject constructor(
@@ -202,7 +202,7 @@ class AppleMusicLyricsApi @Inject constructor(
     }
 
     companion object {
-        const val USER_AGENT = "LastWave"
+        const val USER_AGENT = "Nexora"
 
         /** Syllable envelope -> [LyricLine]. `part` words continue the
          *  previous token ("with"+"drawals"); background vocals ride along

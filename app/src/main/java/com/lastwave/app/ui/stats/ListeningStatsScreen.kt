@@ -212,7 +212,7 @@ fun ListeningStatsScreen(
                 }
             }
 
-            // ── RHYTHM & CONSISTENCY (SLEEP TRACKER INSPIRED) ──
+            // ── RHYTHM & CONSISTENCY ──
             uiState.consistency?.let { consistency ->
                 item {
                     ConsistencyScoreCard(data = consistency)

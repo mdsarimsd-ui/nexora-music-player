@@ -65,16 +65,16 @@ class LogStoreTest {
 
     @Test
     fun `writes the header only when the file is created`() {
-        val first = store(header = "LastWave 4.2.2 session start")
+        val first = store(header = "Nexora 4.2.2 session start")
         first.append(listOf(record("first")))
-        assertTrue(first.activeFile()!!.readText().contains("LastWave 4.2.2 session start"))
+        assertTrue(first.activeFile()!!.readText().contains("Nexora 4.2.2 session start"))
 
         // A second store over the same directory must not re-emit the header.
-        val second = store(header = "LastWave 4.2.2 session start")
+        val second = store(header = "Nexora 4.2.2 session start")
         second.append(listOf(record("second")))
 
         val combined = second.activeFile()!!.readText()
-        assertEquals(1, combined.split("LastWave 4.2.2 session start").size - 1)
+        assertEquals(1, combined.split("Nexora 4.2.2 session start").size - 1)
     }
 
     @Test

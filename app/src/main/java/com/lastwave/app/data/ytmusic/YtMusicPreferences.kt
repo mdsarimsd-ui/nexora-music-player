@@ -130,7 +130,7 @@ class YtMusicPreferences @Inject constructor(
 
     /**
      * "Sync playback to YouTube Music history": records songs actually
-     * listened to in LastWave — including Qobuz/FLAC and downloaded-file
+     * listened to in Nexora — including Qobuz/FLAC and downloaded-file
      * playback — in the connected account's YouTube Music history.
      *
      * Default ON: a missing key reads as `true`, so existing and new users
@@ -325,7 +325,7 @@ class YtMusicPreferences @Inject constructor(
             }
         }
 
-    /** IDs explicitly hidden from LastWave. Empty means show every account playlist. */
+    /** IDs explicitly hidden from Nexora. Empty means show every account playlist. */
     val hiddenLibraryPlaylistIds: Flow<Set<String>> = dataStore.data
         .recoverPreferences("YtMusicPreferences")
         .map { prefs ->

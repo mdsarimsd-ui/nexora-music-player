@@ -405,7 +405,7 @@ class InnerTubeXStreamExtractor @Inject constructor(
                 "prewarm", "close" -> Unit
                 "equals" -> proxy === args?.firstOrNull()
                 "hashCode" -> System.identityHashCode(proxy)
-                "toString" -> "LastWaveBotGuardTokenProvider"
+                "toString" -> "NexoraBotGuardTokenProvider"
                 else -> null
             }
         }
@@ -443,7 +443,7 @@ class InnerTubeXStreamExtractor @Inject constructor(
                 "setCachedAtMs" -> prefs.edit().putLong("cached_at_ms", value as Long).apply().let { null }
                 "hashCode" -> System.identityHashCode(proxy)
                 "equals" -> proxy === value
-                "toString" -> "LastWavePlayerConfigRepository"
+                "toString" -> "NexoraPlayerConfigRepository"
                 else -> null
             }
         }

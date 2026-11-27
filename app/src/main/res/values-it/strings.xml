@@ -1203,8 +1203,8 @@
     <string name="app_icon_white_sub">Logo bianco con linee nere</string>
     <string name="app_icon_black">Nero ossidiana</string>
     <string name="app_icon_black_sub">Logo nero con linee bianche</string>
-    <string name="settings_lastwave_theme">Tema signature Nexora</string>
-    <string name="settings_lastwave_theme_sub">Palette del logo • Electric Lime e Obsidian Teal</string>
+    <string name="settings_nexora_theme">Tema signature Nexora</string>
+    <string name="settings_nexora_theme_sub">Palette del logo • Electric Lime e Obsidian Teal</string>
     <string name="settings_bold_font">Usa il grassetto</string>
     <string name="settings_bold_font_sub">Rende tutto il testo più spesso, testi dei brani inclusi</string>
     <string name="settings_music_video">Video musicale</string>

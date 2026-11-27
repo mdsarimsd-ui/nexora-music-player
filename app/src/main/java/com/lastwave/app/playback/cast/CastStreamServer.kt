@@ -21,9 +21,9 @@ import java.util.UUID
 @OptIn(UnstableApi::class)
 internal class CastStreamServer(private val context: Context, private val address: String) : NanoHTTPD(address, 0) {
     private val wakeLock = context.getSystemService(PowerManager::class.java)
-        .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LastWave:CastStream")
+        .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nexora:CastStream")
     private val wifiLock = context.getSystemService(WifiManager::class.java)
-        .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "LastWave:CastStream")
+        .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Nexora:CastStream")
     private data class Stream(val path: String, val source: MusicPlayer.ResolvedStream)
     @Volatile private var stream: Stream? = null
 

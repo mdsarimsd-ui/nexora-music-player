@@ -1,11 +1,11 @@
-# AGENTS.md — LastWave (Android)
+# AGENTS.md — Nexora (Android)
 
 Rules for every agent working in this repo. Read this before touching code.
 For any UI or visual work, also read [DESIGN.md](DESIGN.md).
 
 ## 0. App overview
 
-LastWave is a native Android YouTube Music client written in Kotlin and Jetpack
+Nexora is a native Android YouTube Music client written in Kotlin and Jetpack
 Compose (`com.lastwave.app`, version `5.2.1` / code `33`). Alongside YouTube
 Music browsing and streaming, it includes offline downloads, local device audio,
 Spotify imports/Canvas, Last.fm scrobbling and stats, podcasts, Listen Together
@@ -44,11 +44,11 @@ Automix transitions, lossless addons, and Bit-Perfect USB DAC output).
 ### Architecture & package map (`app/src/main/java/com/lastwave/app/`)
 
 - **Entry points & navigation:**
-  - `LastWaveApplication` (`@HiltAndroidApp`, `ImageLoaderFactory`, installs
+  - `NexoraApplication` (`@HiltAndroidApp`, `ImageLoaderFactory`, installs
     `Diagnostics`, locale wrapping, BotGuard/stream prewarm, background sync).
   - `MainShellActivity` in `MainActivity.kt` (targeted by `.MainActivity` and
     dynamic-icon `<activity-alias>` launcher entries; `MainActivity` class is a
-    legacy alias) wraps `LastWaveNavHost` (`ui/navigation/NavGraph.kt`, routes in
+    legacy alias) wraps `NexoraNavHost` (`ui/navigation/NavGraph.kt`, routes in
     `ui/navigation/Screen.kt`) inside the mini/full player overlay `PlayerHost`.
   - `MainShell` (`ui/shell/MainShell.kt`) hosts a 3-tab `HorizontalPager`
     (`FEED` -> `FeedScreen`, `STATS` -> `HomeScreen`, `PLAYLISTS` ->
@@ -160,7 +160,7 @@ If the user says "don't build", do not run Gradle. Verify by reading the code.
 
 User reports come as `lastwave-diagnostics-*.txt`. Extract with `strings`.
 Native-crash tombstones are decoded by `diagnostics/TombstoneSummary.kt`;
-`LastWaveTraffic`/`LastWaveStream` lines show every network call and its status.
+`NexoraTraffic`/`NexoraStream` lines show every network call and its status.
 Find the evidence in the log before writing a fix, and quote it in the summary.
 
 ## 6. Reporting back

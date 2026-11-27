@@ -167,18 +167,18 @@ private fun lastWaveTypography(boost: Float) = Typography(
 
 // Regular app font sits a little lighter than the 2.0 values (wght axis); bold mode is unchanged.
 const val REGULAR_FONT_TRIM = -60f
-val LastWaveTypography = lastWaveTypography(REGULAR_FONT_TRIM)
-val LastWaveBoldTypography = lastWaveTypography(BOLD_FONT_BOOST)
+val NexoraTypography = lastWaveTypography(REGULAR_FONT_TRIM)
+val NexoraBoldTypography = lastWaveTypography(BOLD_FONT_BOOST)
 
 /**
  * Aliased typography maintaining backward compatibility so both bold and regular states
  * accurately preserve the authentic typography architecture from the initial release (tag 2.0).
  */
-val LastWaveThinTypography = LastWaveTypography
+val NexoraThinTypography = NexoraTypography
 
 /**
  * The "Use Application Font" toggle's off-state: plain platform default
- * (FontFamily.Default), same sizes/weights as [LastWaveTypography] so
+ * (FontFamily.Default), same sizes/weights as [NexoraTypography] so
  * turning the toggle off changes ONLY the typeface, not the whole scale.
  */
 val SystemTypography = Typography(

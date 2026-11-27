@@ -19,7 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Serializable
-private data class LastWaveLyricsResponse(
+private data class NexoraLyricsResponse(
     val type: String? = null,
     val content: String? = null,
     val track: String? = null,
@@ -27,14 +27,14 @@ private data class LastWaveLyricsResponse(
 )
 
 /**
- * Syllable and line-synced Apple lyrics provided by LastWave backend.
+ * Syllable and line-synced Apple lyrics provided by Nexora backend.
  *
  * Configured via GitHub Actions secrets / BuildConfig:
  * - `LASTWAVE_LYRICS_TOKEN`: Access token passed via `X-Lyrics-Token` header.
  * - `LASTWAVE_LYRICS_URL`: Base backend URL.
  */
 @Singleton
-class LastWaveLyricsApi @Inject constructor(
+class NexoraLyricsApi @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val iTunesSearchClient: ITunesSearchClient,
 ) {
@@ -132,14 +132,14 @@ class LastWaveLyricsApi @Inject constructor(
                     isWordSynced = hasWordTiming,
                     plainLyrics = ttmlLines.joinToString("\n") { it.text },
                     isInstrumental = false,
-                    source = if (hasWordTiming) "LastWave (Word-Sync)" else "LastWave (Line-Sync)",
+                    source = if (hasWordTiming) "Nexora (Word-Sync)" else "Nexora (Line-Sync)",
                 )
             }
         }
 
         // 2. Parse JSON response envelope for LRC or plain text
         val response = try {
-            json.decodeFromString<LastWaveLyricsResponse>(trimmed)
+            json.decodeFromString<NexoraLyricsResponse>(trimmed)
         } catch (_: Exception) {
             null
         }
@@ -155,7 +155,7 @@ class LastWaveLyricsApi @Inject constructor(
                 isWordSynced = false,
                 plainLyrics = lrcLines.joinToString("\n") { it.text },
                 isInstrumental = false,
-                source = "LastWave (Line-Sync)",
+                source = "Nexora (Line-Sync)",
             )
         }
 
@@ -167,7 +167,7 @@ class LastWaveLyricsApi @Inject constructor(
                 isWordSynced = false,
                 plainLyrics = content.trim(),
                 isInstrumental = false,
-                source = "LastWave (Plain)",
+                source = "Nexora (Plain)",
             )
         }
 
@@ -199,6 +199,6 @@ class LastWaveLyricsApi @Inject constructor(
     }
 
     companion object {
-        private const val USER_AGENT = "LastWave-Android/1.0"
+        private const val USER_AGENT = "Nexora-Android/1.0"
     }
 }

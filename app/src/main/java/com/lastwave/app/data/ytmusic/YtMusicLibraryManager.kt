@@ -669,11 +669,11 @@ class YtMusicLibraryManager @Inject constructor(
     }
 
     /**
-     * Deletes a connected-account playlist and removes it from LastWave's
+     * Deletes a connected-account playlist and removes it from Nexora's
      * library projection. The visibility preference is written only after the
      * remote delete succeeds, so a failed request leaves the playlist usable.
      * YouTube Music's Liked Music is a built-in library, not a deletable
-     * playlist; deleting that row only hides it in LastWave.
+     * playlist; deleting that row only hides it in Nexora.
      */
     suspend fun deleteLibraryPlaylist(localId: Long): Boolean = withContext(Dispatchers.IO) {
         val remoteId = remoteIdsByLocalId[localId]

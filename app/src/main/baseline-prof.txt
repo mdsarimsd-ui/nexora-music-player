@@ -1,6 +1,6 @@
 HSPLcom/lastwave/app/MainActivity;->**(**)**
 HSPLcom/lastwave/app/MainShellActivity;->**(**)**
-HSPLcom/lastwave/app/LastWaveApplication;->**(**)**
+HSPLcom/lastwave/app/NexoraApplication;->**(**)**
 HSPLcom/lastwave/app/ui/**;->**(**)**
 HSPLcom/lastwave/app/playback/MusicPlayer**;->**(**)**
 HSPLcom/lastwave/app/playback/MusicPlaybackService**;->**(**)**

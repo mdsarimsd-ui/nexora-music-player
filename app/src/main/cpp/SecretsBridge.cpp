@@ -1,5 +1,5 @@
 /**
- * SecretsBridge.cpp — Native secret vault for LastWave.
+ * SecretsBridge.cpp — Native secret vault for Nexora.
  *
  * Build-time secret injection writes `SecretsBridge_generated.h` (gitignored)
  * bound to the signing certificate's SHA-256 digest.

@@ -5,7 +5,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /** app.css: --radius: 20px; --radius-sm: 12px; --radius-xs: 8px */
-val LastWaveShapes = Shapes(
+val NexoraShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),

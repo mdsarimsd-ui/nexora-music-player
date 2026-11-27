@@ -10,7 +10,7 @@ import android.media.AudioManager
  * shows the pause icon on a frozen clock with no error, on a track that is
  * neither playing nor resumable by the play button, and it only moves again if
  * the app that took focus ever sends [AudioManager.AUDIOFOCUS_GAIN] — some
- * never do, so the song stays stuck "paused" mid-track. LastWave therefore owns
+ * never do, so the song stays stuck "paused" mid-track. Nexora therefore owns
  * the decision itself, where every state has an explicit recovery path.
  */
 enum class AudioFocusAction {

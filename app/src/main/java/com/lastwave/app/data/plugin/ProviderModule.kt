@@ -18,7 +18,7 @@ data class ProviderManifest(
     val icon: String = "",
     val entryPoint: String = "config.json",
     /** Legacy JS global, ignored for JSON-only modules. */
-    val global: String = "LastWaveProvider",
+    val global: String = "NexoraProvider",
     val targetApi: Int = 1,
     val capabilities: List<String> = emptyList(),
     val encrypted: Boolean = false,

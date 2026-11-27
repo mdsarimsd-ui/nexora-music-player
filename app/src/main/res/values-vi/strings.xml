@@ -116,8 +116,8 @@
     <string name="app_icon_white_sub">Logo trắng với các vạch đen</string>
     <string name="app_icon_black">Đen Obsidian</string>
     <string name="app_icon_black_sub">Logo đen với các vạch trắng</string>
-    <string name="settings_lastwave_theme">Chủ đề đặc trưng Nexora</string>
-    <string name="settings_lastwave_theme_sub">Bảng màu logo riêng • Electric Lime &amp; Obsidian Teal</string>
+    <string name="settings_nexora_theme">Chủ đề đặc trưng Nexora</string>
+    <string name="settings_nexora_theme_sub">Bảng màu logo riêng • Electric Lime &amp; Obsidian Teal</string>
     <string name="settings_amoled">Chế độ AMOLED</string>
     <string name="settings_amoled_sub">Nền đen tuyền (chỉ ở chế độ tối)</string>
     <string name="settings_dynamic_color">Màu động</string>

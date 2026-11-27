@@ -162,5 +162,5 @@ object PlaybackStartupLog {
         return (android.os.SystemClock.elapsedRealtime() - startMs).coerceAtLeast(0L)
     }
 
-    private const val TAG = "LastWaveStartup"
+    private const val TAG = "NexoraStartup"
 }

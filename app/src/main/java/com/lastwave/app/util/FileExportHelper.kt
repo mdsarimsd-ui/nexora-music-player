@@ -36,9 +36,9 @@ class FileExportHelper @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
-        private const val PUBLIC_EXPORT_SUBDIR = "LastWave"
-        private const val PUBLIC_BACKUP_SUBDIR = "LastWave/Backups"
-        private const val PUBLIC_PLAYLIST_SUBDIR = "LastWave/Playlists"
+        private const val PUBLIC_EXPORT_SUBDIR = "Nexora"
+        private const val PUBLIC_BACKUP_SUBDIR = "Nexora/Backups"
+        private const val PUBLIC_PLAYLIST_SUBDIR = "Nexora/Playlists"
         private const val PLAYLIST_MIRROR_FILENAME = "lastwave-playlists.json"
         private const val PLAYLIST_RECOVERY_FILENAME = "lastwave-playlists-recovery.json"
         private const val MIRROR_PREFS = "playlist_file_mirror"
@@ -261,7 +261,7 @@ class FileExportHelper @Inject constructor(
     }
 
     /**
-     * Saves a rendered card bitmap to Pictures/LastWave via MediaStore.Images
+     * Saves a rendered card bitmap to Pictures/Nexora via MediaStore.Images
      * with IS_PENDING handling for API 29+.
      */
     suspend fun saveImageToGallery(
@@ -272,7 +272,7 @@ class FileExportHelper @Inject constructor(
             val resolver = context.contentResolver
             val sanitized = sanitizeFilename(title)
             val filename = "lyrics_${sanitized}_${System.currentTimeMillis()}.png"
-            val relativePath = "${Environment.DIRECTORY_PICTURES}/LastWave"
+            val relativePath = "${Environment.DIRECTORY_PICTURES}/Nexora"
 
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, filename)
@@ -309,7 +309,7 @@ class FileExportHelper @Inject constructor(
 
     /**
      * Auto-saves a generated playlist as an M3U file to the public
-     * Download/LastWave/ folder — separate from [saveToDocuments]'s
+     * Download/Nexora/ folder — separate from [saveToDocuments]'s
      * app-private export copy, and visible outside the app / after
      * uninstall. Always runs off the main thread. Never throws: genuine
      * failures come back as [Result.failure] for the caller to decide
@@ -355,7 +355,7 @@ class FileExportHelper @Inject constructor(
     private fun readPrivateMirror(filename: String): String? =
         File(File(context.filesDir, PRIVATE_MIRROR_DIR), filename).takeIf { it.isFile }?.readText()
 
-    /** Explicit user action only (Export backup): copies the playlist library to Download/LastWave. */
+    /** Explicit user action only (Export backup): copies the playlist library to Download/Nexora. */
     suspend fun writePublicPlaylistMirrorToDownloads(content: String): Result<Unit> = withContext(Dispatchers.IO) {
         // Write a complete recovery generation first. If the process or
         // device stops while the primary is being replaced, startup can

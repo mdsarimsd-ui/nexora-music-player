@@ -2242,7 +2242,7 @@ internal fun FullPlayer(
             ),
             playableTrack = track,
             onDismiss = { showTrackMenu = false },
-            onPlayInLastWave = { player.play(track, sourceLabel = state.sourceLabel) },
+            onPlayInNexora = { player.play(track, sourceLabel = state.sourceLabel) },
             canWatchVideo = canWatchVideo,
             onWatchVideo = onToggleSyncedVideo,
         )

@@ -747,7 +747,7 @@ class PlaylistViewModel @Inject constructor(
     fun dismissToast() = _uiState.update { it.copy(toastMessage = null) }
 
     /** Queues a download for every playlist track that is not already on
-     *  disk in Music/LastWave. Already-downloaded (or already-queued)
+     *  disk in Music/Nexora. Already-downloaded (or already-queued)
      *  tracks are skipped so tapping this twice never duplicates files. */
     fun downloadPlaylist(playlistId: Long) {
         viewModelScope.launch {

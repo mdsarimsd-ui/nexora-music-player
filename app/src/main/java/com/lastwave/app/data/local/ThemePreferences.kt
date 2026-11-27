@@ -48,7 +48,7 @@ data class ThemePrefs(
     val hideNavTabs: Boolean = false,
     /** Haptic feedback on taps, buttons, toggles and gestures across the app. */
     val uiHaptics: Boolean = true,
-    /** Dedicated LastWave Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
+    /** Dedicated Nexora Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
     val lastWaveTheme: Boolean = false,
     val useLegacyColors: Boolean = false,
     val appIcon: AppIcon = AppIcon.DEFAULT,
@@ -144,7 +144,7 @@ class ThemePreferences @Inject constructor(
         dataStore.edit { it[Keys.USE_LEGACY_COLORS] = enabled }
     }
 
-    suspend fun setLastWaveTheme(enabled: Boolean) {
+    suspend fun setNexoraTheme(enabled: Boolean) {
         dataStore.edit {
             it[Keys.LASTWAVE_THEME] = enabled
             if (enabled) {

@@ -4,11 +4,11 @@ import androidx.compose.ui.graphics.Color
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class LastWaveThemeTest {
+class NexoraThemeTest {
 
     @Test
     fun lastWaveDarkScheme_usesBrandColors() {
-        val scheme = Md3SchemeBuilder.buildLastWaveDarkScheme(amoled = false)
+        val scheme = Md3SchemeBuilder.buildNexoraDarkScheme(amoled = false)
 
         assertThat(scheme.primary).isEqualTo(Color(0xFFC9FB00))
         assertThat(scheme.onPrimary).isEqualTo(Color(0xFF012226))
@@ -18,7 +18,7 @@ class LastWaveThemeTest {
 
     @Test
     fun lastWaveDarkScheme_amoled_pureBlackSurfaces() {
-        val scheme = Md3SchemeBuilder.buildLastWaveDarkScheme(amoled = true)
+        val scheme = Md3SchemeBuilder.buildNexoraDarkScheme(amoled = true)
 
         assertThat(scheme.primary).isEqualTo(Color(0xFFC9FB00))
         assertThat(scheme.onPrimary).isEqualTo(Color(0xFF012226))
@@ -30,7 +30,7 @@ class LastWaveThemeTest {
 
     @Test
     fun lastWaveLightScheme_usesBrandHighlights() {
-        val scheme = Md3SchemeBuilder.buildLastWaveLightScheme()
+        val scheme = Md3SchemeBuilder.buildNexoraLightScheme()
 
         assertThat(scheme.onPrimaryContainer).isEqualTo(Color(0xFF012226))
         assertThat(scheme.inversePrimary).isEqualTo(Color(0xFFC9FB00))

@@ -241,7 +241,7 @@ class GeniusLyricsApi @Inject constructor(
          * challenges a browser-claiming User-Agent whose TLS fingerprint does
          * not back the claim; a plain one is answered normally.
          */
-        private const val USER_AGENT = "LastWave"
+        private const val USER_AGENT = "Nexora"
 
         private val TITLE_SEPARATOR = Regex("""\s*[-–—:]\s*""")
         private val DECORATIVE_CHARS = Regex("""[♪♫★☆【】《》「」~_]""")

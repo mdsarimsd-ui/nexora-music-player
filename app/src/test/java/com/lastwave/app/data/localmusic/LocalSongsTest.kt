@@ -41,8 +41,8 @@ class LocalSongsTest {
         assertThat(LocalAudioFormats.importedPathOrNull(path)).isEqualTo(path)
         assertThat(LocalAudioFormats.importedPathOrNull("file://$path")).isEqualTo(path)
         // Direct storage paths and content URIs are recognized as local files:
-        assertThat(LocalAudioFormats.importedPathOrNull("/storage/emulated/0/Music/LastWave/a.flac"))
-            .isEqualTo("/storage/emulated/0/Music/LastWave/a.flac")
+        assertThat(LocalAudioFormats.importedPathOrNull("/storage/emulated/0/Music/Nexora/a.flac"))
+            .isEqualTo("/storage/emulated/0/Music/Nexora/a.flac")
         assertThat(LocalAudioFormats.importedPathOrNull("content://com.android.externalstorage.documents/document/a.flac"))
             .isEqualTo("content://com.android.externalstorage.documents/document/a.flac")
         // Remote streaming URLs are not local files:

@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Process-wide "is any LastWave screen on display" flag.
+ * Process-wide "is any Nexora screen on display" flag.
  *
  * Lets background work (the playback progress ticker in particular) relax its
  * cadence while nothing is drawn: a 60ms clock only matters for an on-screen

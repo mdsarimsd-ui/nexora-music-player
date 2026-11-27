@@ -378,8 +378,8 @@ fun TrackContextMenuSheet(
     capabilities: TrackMenuCapabilities,
     playableTrack: PlayableTrack? = null,
     onDismiss: () -> Unit,
-    playbackSourceLabel: String = "LastWave",
-    onPlayInLastWave: (() -> Unit)? = null,
+    playbackSourceLabel: String = "Nexora",
+    onPlayInNexora: (() -> Unit)? = null,
     onStartMix: ((trackName: String, artistName: String) -> Unit)? = null,
     onExploreGenre: ((genre: String) -> Unit)? = null,
     onDeleteScrobble: ((trackName: String, artistName: String) -> Unit)? = null,
@@ -464,7 +464,7 @@ fun TrackContextMenuSheet(
                 onDismiss()
             },
             onPlayTrack = {
-                onPlayInLastWave?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
+                onPlayInNexora?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
             },
         )
         return
@@ -484,7 +484,7 @@ fun TrackContextMenuSheet(
     }
 
     if (showJamSheet) {
-        com.lastwave.app.ui.jam.LastWaveJamSheet(
+        com.lastwave.app.ui.jam.NexoraJamSheet(
             onDismiss = {
                 showJamSheet = false
                 onDismiss()
@@ -598,7 +598,7 @@ fun TrackContextMenuSheet(
                 addToPlaylist = addToPlaylist,
                 dismissing = dismissing,
                 dismissMenu = { dismissMenu() },
-                onPlayInLastWave = onPlayInLastWave,
+                onPlayInNexora = onPlayInNexora,
                 onStartMix = onStartMix,
                 onExploreGenre = onExploreGenre,
                 onRefreshArtwork = onRefreshArtwork,
@@ -633,7 +633,7 @@ fun TrackContextMenuSheet(
                 addToPlaylist = addToPlaylist,
                 dismissing = dismissing,
                 dismissMenu = { dismissMenu() },
-                onPlayInLastWave = onPlayInLastWave,
+                onPlayInNexora = onPlayInNexora,
                 onStartMix = onStartMix,
                 onRefreshArtwork = onRefreshArtwork,
                 onRemoveFromPlaylist = onRemoveFromPlaylist,
@@ -672,7 +672,7 @@ private fun ColumnScope.RedesignedTrackMenuContent(
     addToPlaylist: (PlayableTrack) -> Unit,
     dismissing: Boolean,
     dismissMenu: () -> Unit,
-    onPlayInLastWave: (() -> Unit)?,
+    onPlayInNexora: (() -> Unit)?,
     onStartMix: ((String, String) -> Unit)?,
     onRefreshArtwork: (() -> Unit)?,
     onRemoveFromPlaylist: (() -> Unit)?,
@@ -773,7 +773,7 @@ private fun ColumnScope.RedesignedTrackMenuContent(
                 QuickActionsRow(
                     enabled = !dismissing,
                     onPlay = {
-                        onPlayInLastWave?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
+                        onPlayInNexora?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
                         dismissMenu()
                     },
                     onPlayNext = { musicPlayer.playNext(playable); dismissMenu() },
@@ -959,7 +959,7 @@ private fun ColumnScope.ClassicTrackMenuContent(
     addToPlaylist: (PlayableTrack) -> Unit,
     dismissing: Boolean,
     dismissMenu: () -> Unit,
-    onPlayInLastWave: (() -> Unit)?,
+    onPlayInNexora: (() -> Unit)?,
     onStartMix: ((String, String) -> Unit)?,
     onExploreGenre: ((String) -> Unit)?,
     onRefreshArtwork: (() -> Unit)?,
@@ -1109,7 +1109,7 @@ private fun ColumnScope.ClassicTrackMenuContent(
                             position = pos,
                             enabled = !dismissing,
                         ) {
-                            onPlayInLastWave?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
+                            onPlayInNexora?.invoke() ?: musicPlayer.play(playable, sourceLabel = playbackSourceLabel)
                             dismissMenu()
                         }
                     }

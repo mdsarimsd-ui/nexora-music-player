@@ -17,7 +17,7 @@ import com.lastwave.app.data.lyrics.isRtlText
  * - [LyricInterlude]: an instrumental break of [INTERLUDE_MIN_MS] or more,
  *   drawn as the three-dot countdown.
  * - [LyricIntro]: the song intro, [LYRICS_INTRO_MIN_MS] or longer, drawn as
- *   the LastWave signature card.
+ *   the Nexora signature card.
  *
  * Timing is never changed here: every item starts at a provider timestamp
  * (or at a provider line end for interludes), so focus moves exactly when
@@ -86,7 +86,7 @@ internal data class LyricInterlude(
     override val stanzaGapAfter: Boolean = false,
 ) : LyricsItem
 
-/** Song intro before the first sung row, drawn as the LastWave signature card. */
+/** Song intro before the first sung row, drawn as the Nexora signature card. */
 @Immutable
 internal data class LyricIntro(
     override val endMs: Long,

@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 @HiltAndroidApp
-class LastWaveApplication : Application(), ImageLoaderFactory {
+class NexoraApplication : Application(), ImageLoaderFactory {
 
     @Inject lateinit var themeRepository: dagger.Lazy<ThemeRepository>
     @Inject lateinit var applicationScope: CoroutineScope
@@ -116,14 +116,14 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
                 }?.forEach { file -> runCatching { file.delete() } }
             }
             runCatching { likedSongsManager.get().start() }
-                .onFailure { com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Liked Songs startup disabled", it) }
+                .onFailure { com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Liked Songs startup disabled", it) }
         }
         // YouTube Music playlist sync heartbeat (no-ops until an account is
         // connected AND sync is enabled in Settings).
         applicationScope.launch {
             delay(OPTIONAL_STARTUP_DELAY_MS)
             runCatching { ytMusicSyncManager.get().start() }
-                .onFailure { com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "YT sync startup disabled", it) }
+                .onFailure { com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "YT sync startup disabled", it) }
         }
         // YouTube Music playback-history sync (no-ops until an account is
         // connected AND history sync is enabled in Settings — on by default).
@@ -131,7 +131,7 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
         applicationScope.launch {
             delay(OPTIONAL_STARTUP_DELAY_MS)
             runCatching { ytMusicHistorySyncManager.get().start() }
-                .onFailure { com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "YT history sync startup disabled", it) }
+                .onFailure { com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "YT history sync startup disabled", it) }
         }
         // Reconcile public download directory & MediaStore with local database
         // asynchronously on startup so offline playback works immediately.
@@ -139,7 +139,7 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
             delay(OPTIONAL_STARTUP_DELAY_MS)
             runCatching { trackDownloadManager.get().restoreDownloadsAfterReinstall() }
             runCatching { trackDownloadManager.get().syncDownloadsFromStorage() }
-                .onFailure { com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Download sync startup failed", it) }
+                .onFailure { com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Download sync startup failed", it) }
         }
         // Discord Rich Presence (no-ops unless the switch is on AND the Discord
         // app is installed and signed in). Observes playback state only; it can
@@ -148,10 +148,10 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
         applicationScope.launch {
             delay(OPTIONAL_STARTUP_DELAY_MS)
             runCatching { discordPresenceManager.get().start() }
-                .onFailure { com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Discord presence startup disabled", it) }
+                .onFailure { com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Discord presence startup disabled", it) }
         }
         // A widget is a separate RemoteViews surface, so it needs an explicit
-        // refresh whenever LastWave's live theme changes. The widget's palette
+        // refresh whenever Nexora's live theme changes. The widget's palette
         // only consumes primary/onPrimary (every other role is fixed), so
         // dedupe on those — otherwise ANY DataStore settings change (pins,
         // toggles, font) rebuilt every placed widget.
@@ -162,12 +162,12 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
                     .map { it.colorScheme.primary to it.colorScheme.onPrimary }
                     .distinctUntilChanged()
                     .collect {
-                        WidgetUpdater.refreshTheme(this@LastWaveApplication)
+                        WidgetUpdater.refreshTheme(this@NexoraApplication)
                     }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
-                com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Widget theme observer disabled", error)
+                com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Widget theme observer disabled", error)
             }
         }
         StartupTrail.mark("app.onCreate.end")
@@ -186,7 +186,7 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
      *  - Hardware acceleration enabled for fast GPU texture uploading.
      */
     /**
-     * Gives memory back when One UI / Android asks, so LastWave is a less
+     * Gives memory back when One UI / Android asks, so Nexora is a less
      * attractive low-memory-kill target. Coil already trims its own cache.
      * Only once the process is an idle background app (TRIM_MEMORY_BACKGROUND
      * and above: no visible UI and no playback foreground service) is the
@@ -221,10 +221,10 @@ class LastWaveApplication : Application(), ImageLoaderFactory {
             .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
             .build()
         } catch (error: Exception) {
-            com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Shared artwork client unavailable; using isolated client", error)
+            com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Shared artwork client unavailable; using isolated client", error)
             okhttp3.OkHttpClient.Builder().build()
         } catch (error: LinkageError) {
-            com.lastwave.app.diagnostics.AppLog.e("LastWaveStartup", "Shared artwork client unsupported; using isolated client", error)
+            com.lastwave.app.diagnostics.AppLog.e("NexoraStartup", "Shared artwork client unsupported; using isolated client", error)
             okhttp3.OkHttpClient.Builder().build()
         }
 

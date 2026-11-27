@@ -57,7 +57,7 @@ private fun Color.shiftTonal(lightnessDelta: Float, saturationScale: Float): Col
 }
 
 /**
- * Samsung One UI 6 style waveform slider with LastWave artwork color extraction.
+ * Samsung One UI 6 style waveform slider with Nexora artwork color extraction.
  *
  * Artwork color extraction:
  * - Wavy seekbar has 3 waves (tertiary, secondary, primary).

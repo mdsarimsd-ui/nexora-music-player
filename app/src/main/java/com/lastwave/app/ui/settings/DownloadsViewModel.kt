@@ -330,7 +330,7 @@ class DownloadsViewModel @Inject constructor(
             downloadTreeUri.value,
         )
 
-    /** Human-readable label ("SD card › Music/LastWave"), or null when the
+    /** Human-readable label ("SD card › Music/Nexora"), or null when the
      *  default location is active or the grant was lost. */
     fun describeCustomLocation(): String? =
         com.lastwave.app.data.download.SafTreeFiles.describeLocation(

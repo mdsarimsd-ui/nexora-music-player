@@ -1144,8 +1144,8 @@
     <string name="app_icon_white_sub">白色图标搭配黑条纹</string>
     <string name="app_icon_black">曜石黑</string>
     <string name="app_icon_black_sub">黑色图标搭配白条纹</string>
-    <string name="settings_lastwave_theme">Nexora 标志性主题</string>
-    <string name="settings_lastwave_theme_sub">专属图标配色方案 • 电光绿与曜石青</string>
+    <string name="settings_nexora_theme">Nexora 标志性主题</string>
+    <string name="settings_nexora_theme_sub">专属图标配色方案 • 电光绿与曜石青</string>
     <string name="settings_bold_font">粗体文本</string>
     <string name="settings_bold_font_sub">使所有字体更粗，包含歌词</string>
     <string name="settings_collapsing_nav_bar">折叠式导航栏</string>

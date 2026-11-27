@@ -46,11 +46,11 @@ sealed interface YtSyncState {
 }
 
 /**
- * Keeps every LastWave playlist mirrored to the user's YouTube Music account
+ * Keeps every Nexora playlist mirrored to the user's YouTube Music account
  * ("sync here → there, 24/7") — including the built-in Liked Songs, which
  * syncs as its own private "Liked Songs" mirror. Importing FROM YT Music
  * stays selective — the user picks which playlists to import — but everything
- * saved in LastWave is pushed up automatically.
+ * saved in Nexora is pushed up automatically.
  *
  * Reconcile model (idempotent full-diff per playlist — safe to run any number
  * of times, on any trigger):
@@ -95,7 +95,7 @@ class YtMusicSyncManager @Inject constructor(
 
         // Startup + heartbeat only while a screen is shown: each pass loads
         // WebView's CookieManager and reconciles the library, and running it
-        // every minute in a UI-less background process got LastWave killed
+        // every minute in a UI-less background process got Nexora killed
         // for "excessive cpu" (diagnostics, LG L-51A, reason 9).
         applicationScope.launch {
             delay(INITIAL_DELAY_MS)
@@ -356,7 +356,7 @@ class YtMusicSyncManager @Inject constructor(
             // adopting a same-title playlist can never delete its songs.
             localSet + remoteSet
         } else if (baseline.isEmpty()) {
-            // A newly linked mirror has no shared history yet; LastWave is
+            // A newly linked mirror has no shared history yet; Nexora is
             // authoritative for that first pass so stale remote entries do
             // not get imported as random local songs.
             localSet
@@ -459,7 +459,7 @@ class YtMusicSyncManager @Inject constructor(
     }
 
     /**
-     * Mappings whose local playlist vanished mean "deleted in LastWave":
+     * Mappings whose local playlist vanished mean "deleted in Nexora":
      * delete the remote mirror too. Persists once for all removals.
      */
     private suspend fun deleteOrphanedMirrors(mappings: MutableMap<Long, YtPlaylistMapping>, liveIds: Set<Long>) {

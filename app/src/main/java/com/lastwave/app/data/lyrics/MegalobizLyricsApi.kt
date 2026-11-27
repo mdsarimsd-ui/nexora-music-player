@@ -60,7 +60,7 @@ class MegalobizLyricsApi @Inject constructor(
 
     companion object {
         private const val BASE = "https://www.megalobiz.com"
-        private const val USER_AGENT = "LastWave-Android/1.0 (https://github.com/clash-projects/lastwave)"
+        private const val USER_AGENT = "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)"
 
         private val LRC_LINK = Regex("""href=["'](/lrc/maker/download/[^"']+)["']""", RegexOption.IGNORE_CASE)
         private val LRC_BODY = Regex(

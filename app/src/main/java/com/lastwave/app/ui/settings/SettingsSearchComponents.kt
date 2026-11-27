@@ -33,8 +33,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.FolderOpen
-import com.lastwave.app.ui.jam.LastWaveJamSheet
-import com.lastwave.app.ui.jam.LastWaveJamViewModel
+import com.lastwave.app.ui.jam.NexoraJamSheet
+import com.lastwave.app.ui.jam.NexoraJamViewModel
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults

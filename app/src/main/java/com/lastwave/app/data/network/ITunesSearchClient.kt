@@ -212,7 +212,7 @@ class ITunesSearchClient @Inject constructor(
     }
 
     companion object {
-        private const val USER_AGENT = "LastWave"
+        private const val USER_AGENT = "Nexora"
         private const val MAX_DURATION_DIFF_MS = 12_000L
     }
 }

@@ -100,6 +100,6 @@ class UnisonLyricsApi @Inject constructor(
     companion object {
         private const val TTML = "ttml"
         private const val PLAIN = "plain"
-        private const val USER_AGENT = "LastWave-Android/1.0 (https://github.com/clash-projects/lastwave)"
+        private const val USER_AGENT = "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)"
     }
 }

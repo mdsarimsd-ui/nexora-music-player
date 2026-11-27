@@ -55,8 +55,8 @@ class CommunityPlaylistTintTest {
         val brightestTint = (0 until 360).map { Color.hsl(it.toFloat(), 0.45f, 0.16f) }
             .maxBy { it.luminance() }
         val schemes = listOf(
-            Md3SchemeBuilder.buildLastWaveDarkScheme(amoled = false),
-            Md3SchemeBuilder.buildLastWaveDarkScheme(amoled = true),
+            Md3SchemeBuilder.buildNexoraDarkScheme(amoled = false),
+            Md3SchemeBuilder.buildNexoraDarkScheme(amoled = true),
             Md3SchemeBuilder.buildMonochromeDarkScheme(amoled = false),
             Md3SchemeBuilder.buildMonochromeDarkScheme(amoled = true),
         ) + listOf("#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF")

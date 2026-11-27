@@ -264,7 +264,7 @@ object BotGuardTokenGenerator {
 
     /**
      * Drops the headless WebView engine (tens of MB of in-process Chromium)
-     * when Android reports memory pressure while LastWave sits in the
+     * when Android reports memory pressure while Nexora sits in the
      * background. The next mint rebuilds it on demand, exactly like after
      * expiry. Never touches an engine another call is using: waits for the
      * mutex.

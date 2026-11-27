@@ -162,7 +162,7 @@ class AndroidAutoMediaLibrary @Inject constructor(
     }
 
     /**
-     * Voice request without a title ("play music on LastWave"): resume the
+     * Voice request without a title ("play music on Nexora"): resume the
      * loaded queue, else the newest playlist that has tracks, else downloads.
      */
     suspend fun playAnything(player: MusicPlayer): Boolean {

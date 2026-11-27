@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong
  * debuggable builds so production logging remains clean and lightweight.
  */
 object PlaybackDiagnostics {
-    private const val TAG = "LastWaveAudio"
+    private const val TAG = "NexoraAudio"
     private const val MAX_EVENTS = 96
     private const val MAX_MESSAGE_LENGTH = 220
 
@@ -41,7 +41,7 @@ object PlaybackDiagnostics {
     @Volatile
     private var debuggable: Boolean? = null
 
-    /** Called once from [com.lastwave.app.LastWaveApplication]. Safe to skip; logging stays off. */
+    /** Called once from [com.lastwave.app.NexoraApplication]. Safe to skip; logging stays off. */
     fun install(context: Context) {
         debuggable = try {
             (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0

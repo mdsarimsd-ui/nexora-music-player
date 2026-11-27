@@ -121,7 +121,7 @@ private fun formatMs(ms: Long): String {
 
 @Composable
 fun JamScreen(
-    viewModel: LastWaveJamViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    viewModel: NexoraJamViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

@@ -822,7 +822,7 @@ class LosslessMusicApi @Inject constructor(
         val raceAttempt = raceAttemptIds.incrementAndGet()
         val raceStartedAt = SystemClock.elapsedRealtime()
         var winnerSelectedAt = 0L
-        Log.i("LastWaveAddonRace", "event=race_start attempt=$raceAttempt providers=${allCreds.size}")
+        Log.i("NexoraAddonRace", "event=race_start attempt=$raceAttempt providers=${allCreds.size}")
         val winner = coroutineScope {
             val results = Channel<Pair<Int, LosslessAudioStream?>>(allCreds.size)
             val jobs = allCreds.mapIndexed { providerIndex, creds ->
@@ -842,7 +842,7 @@ class LosslessMusicApi @Inject constructor(
                     } catch (c: CancellationException) {
                         throw c
                     } catch (e: Throwable) {
-                        Log.w("LastWaveAddonRace", "event=provider_failed attempt=$raceAttempt providerIndex=$providerIndex error=${e.javaClass.simpleName}")
+                        Log.w("NexoraAddonRace", "event=provider_failed attempt=$raceAttempt providerIndex=$providerIndex error=${e.javaClass.simpleName}")
                         null
                     }
                     results.trySend(providerIndex to resolved)
@@ -855,7 +855,7 @@ class LosslessMusicApi @Inject constructor(
                     first = resolved
                     if (resolved != null) {
                         winnerSelectedAt = SystemClock.elapsedRealtime()
-                        Log.i("LastWaveAddonRace", "event=winner_selected attempt=$raceAttempt providerIndex=$providerIndex elapsedMs=${winnerSelectedAt - raceStartedAt}")
+                        Log.i("NexoraAddonRace", "event=winner_selected attempt=$raceAttempt providerIndex=$providerIndex elapsedMs=${winnerSelectedAt - raceStartedAt}")
                     }
                 }
             }
@@ -863,7 +863,7 @@ class LosslessMusicApi @Inject constructor(
             first
         }
         val raceReturnedAt = SystemClock.elapsedRealtime()
-        Log.i("LastWaveAddonRace", "event=race_returned attempt=$raceAttempt elapsedMs=${raceReturnedAt - raceStartedAt} winnerToReturnMs=${if (winnerSelectedAt > 0L) raceReturnedAt - winnerSelectedAt else -1L} outcome=${if (winner != null) "winner" else "no_match"}")
+        Log.i("NexoraAddonRace", "event=race_returned attempt=$raceAttempt elapsedMs=${raceReturnedAt - raceStartedAt} winnerToReturnMs=${if (winnerSelectedAt > 0L) raceReturnedAt - winnerSelectedAt else -1L} outcome=${if (winner != null) "winner" else "no_match"}")
         if (winner != null) {
             consecutiveFailures = 0
             failureCooldownUntilMs = 0L
@@ -1363,7 +1363,7 @@ class LosslessMusicApi @Inject constructor(
                     continue
                 }
 
-                Log.i("LastWaveAddonChoice", "searchCandidateIndex=${candidatePositions[trackId] ?: -1} requestedQuality=$q formatId=$formatId hybrid=${hybridUrl != null}")
+                Log.i("NexoraAddonChoice", "searchCandidateIndex=${candidatePositions[trackId] ?: -1} requestedQuality=$q formatId=$formatId hybrid=${hybridUrl != null}")
                 Log.i(TAG, "resolveFromAddon: Acquired stream for track $trackId: formatId=$formatId, bitDepth=${effectiveBitDepth ?: "unknown"}, sampleRate=${effectiveSampleRate}Hz, codec=$streamCodec")
                 consecutiveFailures = 0
                 failureCooldownUntilMs = 0L

@@ -467,7 +467,7 @@ fun ExternalPlaylistImportScreen(
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    "Paste any public Spotify or Apple Music playlist link. LastWave reads the tracks and matches them into your library.",
+                                    "Paste any public Spotify or Apple Music playlist link. Nexora reads the tracks and matches them into your library.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

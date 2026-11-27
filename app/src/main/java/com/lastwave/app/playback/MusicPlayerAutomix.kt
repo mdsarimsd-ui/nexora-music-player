@@ -457,9 +457,9 @@ internal fun MusicPlayer.handOffCrossfade(standby: ExoPlayer, overlapMs: Long) {
         musicHapticsController.bindToPlayer(standby)
         musicHapticsController.onAudioSessionIdChanged(standby.audioSessionId)
         standby.addListener(listener)
-        // Keep handleAudioFocus = false: LastWave manages audio focus manually via requestMediaAudioFocus().
+        // Keep handleAudioFocus = false: Nexora manages audio focus manually via requestMediaAudioFocus().
         // Setting true here activates ExoPlayer's internal AudioFocusManager which steals focus, causing Android
-        // to send AUDIOFOCUS_LOSS (-1) to LastWave's own focus listener, immediately pausing playback.
+        // to send AUDIOFOCUS_LOSS (-1) to Nexora's own focus listener, immediately pausing playback.
         standby.setAudioAttributes(standby.audioAttributes, false)
         // Hand-off never starts the next song behind a pause.
         if (outgoing.playWhenReady) standby.play()

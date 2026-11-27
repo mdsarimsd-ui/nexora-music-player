@@ -811,7 +811,7 @@ internal suspend fun TrackDownloadManager.syncDownloadsFromStorageImpl() = withC
         runCatching { repairCorruptedDownloadMetadata() }
         val existingEntities = downloadedTrackDao.getAllList().toMutableList()
         // Storage scans can discover new downloads, but must also reconcile
-        // rows whose files were removed outside LastWave (for example in a
+        // rows whose files were removed outside Nexora (for example in a
         // file manager). Otherwise Room keeps showing a song that no longer
         // exists on disk forever.
         val missingTracks = existingEntities.filter { recordedAudioAvailability(it) == false }

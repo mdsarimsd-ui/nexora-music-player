@@ -180,7 +180,7 @@ fun HomeScreen(
     artistAlbumNavigator: com.lastwave.app.ui.navigation.ArtistAlbumNavigator = hiltViewModel<ArtistAlbumNavBridgeHome>().navigator,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val jamViewModel: com.lastwave.app.ui.jam.LastWaveJamViewModel = hiltViewModel()
+    val jamViewModel: com.lastwave.app.ui.jam.NexoraJamViewModel = hiltViewModel()
     var showJamSheet by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -481,7 +481,7 @@ fun HomeScreen(
     }
 
     if (showJamSheet) {
-        com.lastwave.app.ui.jam.LastWaveJamSheet(
+        com.lastwave.app.ui.jam.NexoraJamSheet(
             viewModel = jamViewModel,
             onDismiss = { showJamSheet = false },
         )

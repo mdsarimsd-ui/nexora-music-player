@@ -21,7 +21,7 @@ private const val ART_FILE_NAME = "widget_now_playing_art.png"
  *
  * Same public API as before (publish / clear / setPlaying / sync /
  * refreshTheme) so MusicPlaybackService,
- * MusicPlayer and LastWaveApplication keep compiling unchanged — but the
+ * MusicPlayer and NexoraApplication keep compiling unchanged — but the
  * inside is dependency-free: no Glance, no Hilt, no theme repo.
  *
  * The equalizer/progress live ticker was removed (audit #9): re-pushing

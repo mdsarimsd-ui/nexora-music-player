@@ -8,7 +8,7 @@ import androidx.media3.common.C
 /**
  * Publishes ExoPlayer's audio session to Android's standard effect-control
  * protocol so external equalizer apps (Wavelet, Poweramp EQ, …) and OEM
- * Dolby panels can attach to LastWave playback.
+ * Dolby panels can attach to Nexora playback.
  *
  * Inactive by default: [setModeActive] follows the "System Audio Effects"
  * setting combined with route state (bypass routes suspend it). Every

@@ -239,7 +239,7 @@ data class MiscSettings(
     /** In-app language override tag: "system" (default), "en", "tr", "zh-Hans". */
     val appLanguageTag: String = AppLanguage.SYSTEM.tag,
     /** Subfolder name under public Music/ where downloads are saved.
-     *  Default "LastWave" -> Music/LastWave. Scoped storage (API 29+)
+     *  Default "Nexora" -> Music/Nexora. Scoped storage (API 29+)
      *  forbids arbitrary paths, so only the leaf folder name is configurable. */
     val downloadFolder: String = DEFAULT_DOWNLOAD_FOLDER,
     /** User-chosen SAF tree Uri (ACTION_OPEN_DOCUMENT_TREE) for downloads,
@@ -282,14 +282,14 @@ data class MiscSettings(
     /** When false, podcast shelves, screens and episode search stay hidden.
      *  Existing progress is preserved so re-enabling resumes where you left off. */
     val podcastsEnabled: Boolean = true,
-    /** When true (default), removing LastWave from Recents stops playback and
+    /** When true (default), removing Nexora from Recents stops playback and
      *  tears down the playback service. When false, playback keeps running in
      *  the background after the task is removed. */
     val stopPlaybackOnTaskRemoved: Boolean = false,
     val pauseOnZeroVolume: Boolean = false,
     val suppressYouTubeLoginPrompt: Boolean = false,
     val hasDismissedJoinSupportPrompt: Boolean = false,
-    /** Display name used in LastWave Jam sessions. */
+    /** Display name used in Nexora Jam sessions. */
     val jamDisplayName: String = "",
     /** Custom Jam WebSocket server URL. */
     val jamServerUrl: String = "wss://jam.clashgram.org/ws",
@@ -414,8 +414,8 @@ enum class DownloadFolderStructure(val id: String, val titleRes: Int, val exampl
     }
 }
 
-/** Default subfolder under Music/ for offline tracks (Music/LastWave). */
-const val DEFAULT_DOWNLOAD_FOLDER = "LastWave"
+/** Default subfolder under Music/ for offline tracks (Music/Nexora). */
+const val DEFAULT_DOWNLOAD_FOLDER = "Nexora"
 
 /** Sanitize a user-entered download folder to a safe single path segment:
  *  no separators, no traversal, max 40 chars, fallback to default. */

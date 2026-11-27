@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2026 LastWave Authors (https://github.com/Clash-Projects/LastWave-Native)
+ * Copyright (C) 2026 Nexora Authors (https://github.com/Clash-Projects/Nexora-Native)
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file is part of LastWave.
+ * This file is part of Nexora.
  *
- * LastWave is free software: you can redistribute it and/or modify
+ * Nexora is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * LastWave is distributed in the hope that it will be useful,
+ * Nexora is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with LastWave. If not, see <https://www.gnu.org/licenses/>.
+ * along with Nexora. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.lastwave.app.playback
@@ -134,7 +134,7 @@ data class SignalPathReport(
     val directToHal: Boolean = false,
     val internalSession: InternalDirectSession? = null,
     val bypassRequested: Boolean = false,
-    /** AutoEQ is applied by LastWave: never bit-perfect, but still "Direct + EQ". */
+    /** AutoEQ is applied by Nexora: never bit-perfect, but still "Direct + EQ". */
     val parametricEqActive: Boolean = false,
     // Poweramp pipeline fields:
     val outputEngineName: String = "Android AudioTrack",
@@ -284,7 +284,7 @@ fun evaluateSignalPath(i: SignalPathInput): SignalPathReport {
     }
 
     // 3b — AutoEQ / parametric EQ: a correction the user asked for. It runs
-    // in LastWave before any direct output, so the mixer is still bypassed,
+    // in Nexora before any direct output, so the mixer is still bypassed,
     // but the samples are no longer the source's.
     if (i.parametricEqActive) {
         checks += PathCheck(

@@ -23,12 +23,17 @@ object AppVisibility {
     val isVisible: Boolean
         get() = startedActivities.get() > 0
 
+    /** Notified whenever the app's UI becomes visible or fully hidden. */
+    @Volatile
+    var visibleListener: (() -> Unit)? = null
+
     fun install(application: Application) {
         if (!installed.compareAndSet(false, true)) return
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 startedActivities.incrementAndGet()
                 com.lastwave.app.diagnostics.SessionMarker.noteActivity(application, uiVisible = true)
+                visibleListener?.invoke()
             }
 
             override fun onActivityStopped(activity: Activity) {
@@ -37,6 +42,7 @@ object AppVisibility {
                 if (left == 0) {
                     com.lastwave.app.diagnostics.SessionMarker.noteActivity(application, uiVisible = false)
                 }
+                visibleListener?.invoke()
             }
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit

@@ -182,9 +182,12 @@ class NotchPlayerService : Service() {
             runCatching {
                 val r = wm?.currentWindowMetrics?.windowInsets?.displayCutout?.boundingRects?.firstOrNull()
                 if (r != null && r.height() > 0) {
-                    pillH = maxOf(pillH, r.height() + (10 * density).toInt())
-                        .coerceAtMost((46 * density).toInt())
-                    topY = (r.centerY() - pillH / 2).coerceAtLeast(0)
+                    pillH = maxOf(pillH, r.height() + (16 * density).toInt())
+                        .coerceAtMost((60 * density).toInt())
+                    // A touch lower and taller: the old 46dp pill sat half
+                    // inside the status-bar gesture row where HyperOS ate
+                    // every tap, and its buttons were too thin to hit.
+                    topY = (r.centerY() - pillH / 2 + (6 * density).toInt()).coerceAtLeast(0)
                     cutR = maxOf(cutR, maxOf(r.width(), r.height()) / 2)
                     expandedY = r.bottom + (8 * density).toInt()
                 }
@@ -844,7 +847,7 @@ private class NotchPillView(
                     }
                 } else {
                     val pw = width.toFloat()
-                    if (abs(event.x - collapsedPlayX(pw)) < 18 * density && abs(event.y - collapsedH / 2f) < 18 * density) {
+                    if (abs(event.x - collapsedPlayX(pw)) < 26 * density && abs(event.y - collapsedH / 2f) < 26 * density) {
                         if (playing) c.transportControls.pause() else c.transportControls.play()
                     } else {
                         setExpanded(true)

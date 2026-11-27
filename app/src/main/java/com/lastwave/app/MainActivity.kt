@@ -242,6 +242,8 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
                         }
                         // Desktop-style in-app update dialog, shared by every screen.
                         com.lastwave.app.ui.update.AppUpdateDialogHost()
+                        // Donation prompt: slow-cadence glass card on app open.
+                        com.lastwave.app.ui.donation.DonationPromptHost()
                     }
                 }
             }

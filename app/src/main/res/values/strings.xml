@@ -1566,4 +1566,9 @@
     <string name="recognize_error_no_match">This song could not be recognised. Move closer to the music and try again.</string>
     <string name="recognize_error_rate_limited">Too many attempts. Wait a moment and try again.</string>
     <string name="recognize_error_network">The recognition service could not be reached. Check your connection and try again.</string>
+    <!-- Donation prompt -->
+    <string name="donation_prompt_title">Enjoying Nexora?</string>
+    <string name="donation_prompt_body">Nexora is free, no ads, no tracking. If it makes your music better, a small UPI donation keeps it moving.</string>
+    <string name="donation_prompt_support">Support via UPI</string>
+    <string name="donation_prompt_later">Maybe later</string>
 </resources>

@@ -88,6 +88,9 @@ class JamRepository @Inject constructor(
         // Default production sync daemon address
         const val DEFAULT_JAM_SERVER_WS = "wss://jam.clashgram.org/ws"
         const val DEFAULT_JAM_SERVER_HTTP = "https://jam.clashgram.org"
+        // Nexora's own invite landing page (GitHub Pages). Kept separate from the sync
+        // server so invites carry Nexora branding and point at the Nexora install link.
+        const val DEFAULT_INVITE_BASE = "https://mdsarimsd-ui.github.io/nexora-jam"
     }
 
     private val json = Json {
@@ -165,17 +168,10 @@ class JamRepository @Inject constructor(
     }
 
     /**
-     * Shareable https link. Opens the web invite page, which launches whichever
+     * Shareable https link. Opens Nexora's invite page, which opens Nexora for
      * Nexora is installed and previews with the room code in chat apps.
      */
-    fun inviteLink(code: String): String {
-        val base = serverUrl
-            .replaceFirst("wss://", "https://")
-            .replaceFirst("ws://", "http://")
-            .substringBefore("/ws")
-            .trimEnd('/')
-        return "$base/?code=$code"
-    }
+    fun inviteLink(code: String): String = "$DEFAULT_INVITE_BASE/?code=$code"
 
     fun createRoom(displayName: String, roomMode: String = JamProtocolConstants.MODE_COLLABORATIVE) {
         val trimmed = displayName.trim().takeIf { it.isNotEmpty() } ?: "Listener"

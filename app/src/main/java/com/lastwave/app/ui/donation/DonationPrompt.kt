@@ -66,7 +66,10 @@ fun DonationPromptHost() {
         val shownDay = prefs.getLong(KEY_LAST_SHOWN_DAY, -1L)
         val supported = prefs.getLong(KEY_LAST_SUPPORTED, 0L)
         val cadence = if (supported > 0L) 30 else 7
-        if (launches % cadence == 0 && shownDay != today) {
+        // First-ever ask comes early (3rd launch) so new users meet it once;
+        // after that it stays on the slow cadence.
+        val due = if (shownDay == -1L) launches >= 3 else launches % cadence == 0
+        if (due && shownDay != today) {
             prefs.edit().putLong(KEY_LAST_SHOWN_DAY, today).apply()
             show = true
         }

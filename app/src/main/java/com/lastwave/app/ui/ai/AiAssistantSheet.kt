@@ -2,12 +2,15 @@ package com.lastwave.app.ui.ai
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
@@ -205,11 +211,27 @@ fun AiAssistantSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
+        // Liquid glass: blur the app behind this dialog window, then let the
+        // translucent card show it. Devices that refuse blur keep the tint.
+        val sheetWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            if (sheetWindow != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                runCatching {
+                    sheetWindow.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    val d = sheetWindow.context.resources.displayMetrics.density
+                    sheetWindow.attributes = sheetWindow.attributes.also {
+                        it.blurBehindRadius = (34 * d).toInt()
+                    }
+                    sheetWindow.setDimAmount(0f)
+                }
+            }
+        }
         // Floating Gemini-style card: hovered above the bottom edge, glass all around.
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
             contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -308,10 +330,7 @@ fun AiAssistantSheet(
                 }
             }
 
-            if (!settingsReady) {
-                Spacer(Modifier.height(24.dp))
-            } else {
-                if (settings.apiKey.isBlank() || settingsOpen) {
+            if (settingsReady && (settings.apiKey.isBlank() || settingsOpen)) {
                 // Setup stays one line away: masked key, never readable again.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("AI Assistant", modifier = Modifier.weight(1f))
@@ -380,6 +399,8 @@ fun AiAssistantSheet(
                             keyInput = ""
                         }) { Text("Change key") }
                     }
+                }
+
                 }
 
                 // Transcript: nothing until the user speaks; then a chat.
@@ -530,8 +551,6 @@ fun AiAssistantSheet(
                         Icon(Icons.Filled.Send, contentDescription = "Send")
                     }
                 }
-            }
-            }
         }
         }
     }

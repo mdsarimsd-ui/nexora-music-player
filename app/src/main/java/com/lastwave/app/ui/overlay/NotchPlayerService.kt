@@ -62,14 +62,15 @@ object NotchPlayerPrefs {
 }
 
 /**
- * Liquid-glass "notch player": a Dynamic Island style glass pill that wraps
- * the camera cutout whenever Nexora holds a media session, sized a step
- * bigger than the system media pill. The camera hole is read from the
- * display cutout and carved out of the glass, so the camera is never
- * covered. Collapsed it is a wide glass pill with artwork, title and a
- * play / pause button beside the camera; tap the pill to expand into a full
- * glass card with seek and transport controls. Swipe the pill up to hide it
- * until the next track.
+ * "Notch player": a Dynamic Island style pill that wraps the camera cutout
+ * whenever Nexora holds a media session, sitting in the status-bar row the
+ * way the system media pill does. Collapsed it is a near-black capsule with
+ * the Nexora icon left of the camera, the track title right of it and a
+ * play / pause button at the cap; tap to expand into a glass card with seek
+ * and transport controls that drops below the camera. It hides while a
+ * Nexora screen is on display, blooms out of the camera with a scale
+ * animation and pulses briefly when the track changes. Swipe the pill up to
+ * hide it until the next track.
  */
 class NotchPlayerService : Service() {
 
@@ -97,6 +98,8 @@ class NotchPlayerService : Service() {
     private var wm: WindowManager? = null
     private var added = false
     private val handler = Handler(Looper.getMainLooper())
+    private var baseY = 0
+    private var expandedY = 0
 
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) {
@@ -133,7 +136,7 @@ class NotchPlayerService : Service() {
         if (c != null) {
             controller = c
             runCatching { c.registerCallback(callback, handler) }
-            view = NotchPillView(this, c, ::hidePill)
+            view = NotchPillView(this, c, ::hidePill, ::shiftWindow)
             pushState()
         } else if (tryCount < 10) {
             handler.postDelayed({ connect(tryCount + 1) }, 500)
@@ -170,30 +173,47 @@ class NotchPlayerService : Service() {
     private fun addPill() {
         if (added || view == null) return
         val density = resources.displayMetrics.density
-        // Sit just below the punch-hole camera: nothing is covered, no
-        // carving is needed, and the bar stays clear of the status bar
-        // icons the way the lock-screen media bar does.
-        var topY = (8 * density).toInt()
+        // Island mode: the pill sits IN the status-bar row, centred on the
+        // punch-hole camera, exactly where the system media pill lives.
+        var topY = (4 * density).toInt()
+        var pillH = NotchPillView.collapsedHeightPx(density)
+        var cutR = (13 * density).toInt()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             runCatching {
                 val r = wm?.currentWindowMetrics?.windowInsets?.displayCutout?.boundingRects?.firstOrNull()
-                if (r != null && r.bottom > 0) topY = r.bottom + (10 * density).toInt()
+                if (r != null && r.height() > 0) {
+                    pillH = maxOf(pillH, r.height() + (10 * density).toInt())
+                        .coerceAtMost((46 * density).toInt())
+                    topY = (r.centerY() - pillH / 2).coerceAtLeast(0)
+                    cutR = maxOf(cutR, maxOf(r.width(), r.height()) / 2)
+                    expandedY = r.bottom + (8 * density).toInt()
+                }
             }
         }
-        val pillH = NotchPillView.collapsedHeightPx(density)
+        if (expandedY == 0) expandedY = topY + pillH + (6 * density).toInt()
+        baseY = topY
+        view?.setCollapsedSize(
+            minOf(
+                (140 * density).toInt() + 2 * (cutR + (7 * density).toInt()),
+                (resources.displayMetrics.widthPixels * 0.55f).toInt(),
+            ),
+            pillH,
+        )
+        view?.setCutoutRadiusPx(cutR)
         if (params == null) {
             params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                y = topY
             }
         }
+        params?.y = topY
         runCatching {
             wm?.addView(view, params)
             added = true
@@ -208,6 +228,13 @@ class NotchPlayerService : Service() {
     private fun hidePill() {
         removePill()
         view?.sessionHidden = true
+    }
+
+    /** Move the window down when the expanded card opens so it clears the camera. */
+    private fun shiftWindow(down: Boolean) {
+        val p = params ?: return
+        p.y = if (down) expandedY else baseY
+        runCatching { wm?.updateViewLayout(view, p) }
     }
 
     /** App-foreground change: hide the pill inside the app, show it outside. */
@@ -239,6 +266,7 @@ private class NotchPillView(
     context: Context,
     private var ctrl: MediaController?,
     private val onHide: () -> Unit,
+    private val onShift: (down: Boolean) -> Unit,
 ) : View(context) {
 
     var sessionHidden = false
@@ -253,15 +281,17 @@ private class NotchPillView(
     private var art: Bitmap? = null
 
     companion object {
-        fun collapsedHeightPx(density: Float): Int = (64 * density).toInt()
+        fun collapsedHeightPx(density: Float): Int = (38 * density).toInt()
     }
 
     private val density = resources.displayMetrics.density
-    private val collapsedW = min(
-        (resources.displayMetrics.widthPixels * 0.72f).toInt(),
-        (300 * density).toInt(),
+    private var collapsedW = min(
+        (resources.displayMetrics.widthPixels * 0.55f).toInt(),
+        (240 * density).toInt(),
     )
-    private val collapsedH = (64 * density).toInt()
+    private var collapsedH = (38 * density).toInt()
+    // Camera-hole radius in px (service-provided); content never crosses it.
+    private var camR = 13f * density
     private val expandedH = (162 * density).toInt()
     private val expandedW: Int
         get() = min(
@@ -287,6 +317,30 @@ private class NotchPillView(
 
     private var expandAnim: ValueAnimator? = null
 
+    // The app's launcher icon, shown in the collapsed island the way the
+    // system media pill shows the playing app's icon.
+    private val appIconBmp: Bitmap? = runCatching {
+        val d = context.applicationInfo.loadIcon(context.packageManager)
+        val side = (48 * resources.displayMetrics.density).toInt().coerceAtLeast(48)
+        val bmp = if (d is android.graphics.drawable.BitmapDrawable) {
+            d.bitmap
+        } else {
+            val w0 = maxOf(d.intrinsicWidth, 1)
+            val h0 = maxOf(d.intrinsicHeight, 1)
+            Bitmap.createBitmap(w0, h0, Bitmap.Config.ARGB_8888).also { b ->
+                val c = android.graphics.Canvas(b)
+                d.setBounds(0, 0, w0, h0)
+                d.draw(c)
+            }
+        }
+        Bitmap.createScaledBitmap(bmp, side, side, true)
+    }.getOrNull()
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private var iconSize = 0
+    private var pulseT = 0f
+    private var pulseAnim: ValueAnimator? = null
+    private var pressAnim: ValueAnimator? = null
+
     // Entrance / exit: the bar slides down from under the status bar and
     // fades in when a track starts, and slides back up when dismissed.
     private var appear = 0f
@@ -297,12 +351,16 @@ private class NotchPillView(
 
     init {
         appearAnim = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 340
-            interpolator = android.view.animation.DecelerateInterpolator()
+            // The island blooms out of the camera hole: it grows from a dot
+            // at the centre with a gentle overshoot, like the system pill.
+            duration = 380
+            interpolator = android.view.animation.OvershootInterpolator(1.1f)
             addUpdateListener {
                 appear = it.animatedValue as Float
-                alpha = appear
-                translationY = -(1f - appear) * 34f * density
+                alpha = appear.coerceIn(0f, 1f)
+                val sc = 0.22f + 0.78f * appear
+                scaleX = sc
+                scaleY = sc
             }
             start()
         }
@@ -314,11 +372,13 @@ private class NotchPillView(
         dismissing = true
         appearAnim?.cancel()
         ValueAnimator.ofFloat(appear, 0f).apply {
-            duration = 220
+            duration = 240
             addUpdateListener {
                 appear = it.animatedValue as Float
-                alpha = appear
-                translationY = -(1f - appear) * 34f * density
+                alpha = appear.coerceIn(0f, 1f)
+                val sc = 0.22f + 0.78f * appear
+                scaleX = sc
+                scaleY = sc
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(a: android.animation.Animator) = onGone()
@@ -373,6 +433,11 @@ private class NotchPillView(
         color = 0x99FFFFFF.toInt()
         strokeCap = Paint.Cap.ROUND
     }
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f * density
+        color = Color.WHITE
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = (collapsedW + (expandedW - collapsedW) * expandT).toInt()
@@ -412,7 +477,51 @@ private class NotchPillView(
         if (newTrack && sessionHidden) {
             sessionHidden = false
         }
+        if (newTrack) pulse()
         invalidate()
+    }
+
+    /** Camera-hole radius: text never crosses it, so the island hugs the lens. */
+    fun setCutoutRadiusPx(r: Int) {
+        camR = maxOf(11f * density, r.toFloat())
+    }
+
+    fun setCollapsedSize(wPx: Int, hPx: Int) {
+        collapsedW = wPx.coerceAtLeast((120 * density).toInt())
+        collapsedH = hPx
+        val s = (hPx - (16 * density).toInt()).coerceAtLeast(8)
+        if (appIconBmp != null && iconSize != s) {
+            iconSize = s
+            iconPaint.shader = BitmapShader(
+                Bitmap.createScaledBitmap(appIconBmp, s, s, true),
+                Shader.TileMode.CLAMP,
+                Shader.TileMode.CLAMP,
+            )
+        }
+        requestLayout()
+    }
+
+    /** Quick white halo pulse when the track changes. */
+    private fun pulse() {
+        pulseAnim?.cancel()
+        pulseAnim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 320
+            addUpdateListener { p ->
+                val t = p.animatedValue as Float
+                pulseT = 1f - kotlin.math.abs(2f * t - 1f)
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun animatePress(target: Float) {
+        pressAnim?.cancel()
+        pressAnim = ValueAnimator.ofFloat(pressT, target).apply {
+            duration = if (target > pressT) 90 else 170
+            addUpdateListener { pressT = it.animatedValue as Float; invalidate() }
+            start()
+        }
     }
 
     private fun currentPosMs(): Long {
@@ -425,18 +534,30 @@ private class NotchPillView(
         val w = width.toFloat()
         val h = height.toFloat()
         val r = 26f * density
-        // Liquid glass: a lighter frosted body than the old solid pill, with
-        // a cool tint, a moving sheen while playing and a hairline rim.
-        val alphaTop = if (expanded) 0x66 else 0x50
-        fill.shader = LinearGradient(
-            0f, 0f, 0f, h,
-            intArrayOf(
-                Color.argb(alphaTop, 168, 184, 202),
-                Color.argb(if (expanded) 0xE6 else 0xD2, 10, 12, 16),
-            ),
-            null,
-            Shader.TileMode.CLAMP,
-        )
+        // Collapsed island: near-black like the system media pill, so it
+        // reads as one solid capsule wrapping the camera. Expanded it keeps
+        // the liquid-glass frosted card with a moving sheen and hairline rim.
+        fill.shader = if (expanded) {
+            LinearGradient(
+                0f, 0f, 0f, h,
+                intArrayOf(
+                    Color.argb(0x66, 168, 184, 202),
+                    Color.argb(0xE6, 10, 12, 16),
+                ),
+                null,
+                Shader.TileMode.CLAMP,
+            )
+        } else {
+            LinearGradient(
+                0f, 0f, 0f, h,
+                intArrayOf(
+                    Color.argb(0xF2, 13, 13, 16),
+                    Color.argb(0xF2, 20, 20, 24),
+                ),
+                null,
+                Shader.TileMode.CLAMP,
+            )
+        }
         rim.shader = LinearGradient(
             -w / 4f, 0f, w, h,
             intArrayOf(0xB3FFFFFF.toInt(), 0x14FFFFFF, 0x4DFFFFFF),
@@ -459,28 +580,33 @@ private class NotchPillView(
         canvas.drawRect(0f, 0f, w, h, sheen)
         canvas.restore()
         canvas.drawPath(shape, rim)
+        if (!expanded && pulseT > 0f) {
+            halo.alpha = (0x55 * pulseT).toInt().coerceIn(0, 255)
+            canvas.drawRoundRect(
+                RectF(-2.5f * density, -2.5f * density, w + 2.5f * density, h + 2.5f * density),
+                r + 2.5f * density, r + 2.5f * density, halo,
+            )
+        }
         if (expanded) drawExpanded(canvas, w, h) else drawCollapsed(canvas, w, h)
     }
 
     private fun drawCollapsed(canvas: Canvas, w: Float, h: Float) {
-        // Lock-screen media bar layout: rounded album art, two text lines,
-        // play / pause disc, hairline progress along the bottom.
-        val pad = 10f * density
-        val artS = h - 2 * pad
-        val ax = pad
-        val ay = pad
-        drawArtRect(canvas, ax, ay, artS)
-        val bR = (h - 18f * density) / 2f
-        val bx = collapsedPlayX(w)
+        // HyperOS island layout: app icon left of the camera, the track
+        // title right of it, play / pause at the right cap, a hairline
+        // progress along the bottom edge.
+        val pad = 8f * density
+        val iconS = h - 2 * pad
+        drawAppIcon(canvas, pad, pad, iconS)
+        val bR = (h - 16f * density) / 2f
+        val bx = w - pad - bR
         val by = h / 2f
-        val tx = ax + artS + 12f * density
-        val textRight = bx - 12f * density
+        val camGap = camR + 7f * density
+        val tx = w / 2f + camGap
+        val textRight = bx - 10f * density
         val avail = textRight - tx
-        if (avail > 24f * density) {
-            titlePaint.textSize = 14f * density
-            artistPaint.textSize = 11.5f * density
-            val tY = h / 2f - 2f * density
-            val aY = h / 2f + 12f * density
+        if (avail > 28f * density) {
+            titlePaint.textSize = 13f * density
+            val tY = h / 2f + 4.5f * density
             val full = title.ifBlank { "Nexora" }
             val tw = titlePaint.measureText(full)
             canvas.save()
@@ -495,42 +621,40 @@ private class NotchPillView(
                 val t = TextUtils.ellipsize(full, titlePaint, avail, TextUtils.TruncateAt.END).toString()
                 canvas.drawText(t, tx, tY, titlePaint)
             }
-            val a = TextUtils.ellipsize(artist, artistPaint, avail, TextUtils.TruncateAt.END).toString()
-            canvas.drawText(a, tx, aY, artistPaint)
             canvas.restore()
         }
         // Play / pause disc with a gentle press swell.
         val pr = bR * (1f + 0.07f * pressT)
-        glyph.color = 0x30FFFFFF
+        glyph.color = 0x2EFFFFFF
         canvas.drawCircle(bx, by, pr, glyph)
         glyph.color = Color.WHITE
         if (playing) {
-            val bw = 2.9f * density
-            val bh = 9.5f * density
-            canvas.drawRoundRect(RectF(bx - 3.8f * density, by - bh / 2, bx - 0.9f * density, by + bh / 2), 1.3f * density, 1.3f * density, glyph)
-            canvas.drawRoundRect(RectF(bx + 0.9f * density, by - bh / 2, bx + 3.8f * density, by + bh / 2), 1.3f * density, 1.3f * density, glyph)
+            val bw = 2.6f * density
+            val bh = 8.5f * density
+            canvas.drawRoundRect(RectF(bx - 3.4f * density, by - bh / 2, bx - 0.8f * density, by + bh / 2), 1.2f * density, 1.2f * density, glyph)
+            canvas.drawRoundRect(RectF(bx + 0.8f * density, by - bh / 2, bx + 3.4f * density, by + bh / 2), 1.2f * density, 1.2f * density, glyph)
         } else {
             val path = android.graphics.Path()
-            path.moveTo(bx - 3.4f * density, by - 5.8f * density)
-            path.lineTo(bx + 5.6f * density, by)
-            path.lineTo(bx - 3.4f * density, by + 5.8f * density)
+            path.moveTo(bx - 3f * density, by - 5.2f * density)
+            path.lineTo(bx + 5f * density, by)
+            path.lineTo(bx - 3f * density, by + 5.2f * density)
             path.close()
             canvas.drawPath(path, glyph)
         }
         if (durationMs > 0) {
-            track.color = 0x24FFFFFF
-            val inset = 16f * density
-            canvas.drawRoundRect(RectF(inset, h - 2.6f * density, w - inset, h - 1f * density), 1f, 1f, track)
+            track.color = 0x26FFFFFF
+            val inset = 12f * density
+            canvas.drawRoundRect(RectF(inset, h - 2.4f * density, w - inset, h - 0.8f * density), 1f, 1f, track)
             val frac = (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             progress.color = 0xE6C6F53F.toInt()
-            canvas.drawRoundRect(RectF(inset, h - 2.6f * density, inset + (w - 2 * inset) * frac, h - 1f * density), 1f, 1f, progress)
+            canvas.drawRoundRect(RectF(inset, h - 2.4f * density, inset + (w - 2 * inset) * frac, h - 0.8f * density), 1f, 1f, progress)
         }
     }
 
     /** Screen-x of the play / pause disc on the right cap, for taps. */
     private fun collapsedPlayX(w: Float): Float {
-        val pad = 10f * density
-        val bR = (collapsedH - 18f * density) / 2f
+        val pad = 8f * density
+        val bR = (collapsedH - 16f * density) / 2f
         return w - pad - bR
     }
 
@@ -572,6 +696,27 @@ private class NotchPillView(
         }
         ring.color = 0x4DFFFFFF
         canvas.drawRoundRect(rr, rad, rad, ring)
+    }
+
+    private fun drawAppIcon(canvas: Canvas, x: Float, y: Float, s: Float) {
+        val rad = s * 0.32f
+        val rr = RectF(x, y, x + s, y + s)
+        if (iconPaint.shader != null) {
+            val clip = android.graphics.Path()
+            clip.addRoundRect(rr, rad, rad, android.graphics.Path.Direction.CW)
+            canvas.save()
+            canvas.clipPath(clip)
+            canvas.drawRect(rr, iconPaint)
+            canvas.restore()
+        } else {
+            disc.shader = RadialGradient(
+                x + s / 3f, y + s / 3f, s * 0.9f,
+                intArrayOf(0xFF7CE0A3.toInt(), 0xFF2B8A57.toInt(), 0xFF173A2B.toInt()),
+                floatArrayOf(0f, 0.62f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+            canvas.drawRoundRect(rr, rad, rad, disc)
+        }
     }
 
     private fun drawExpanded(canvas: Canvas, w: Float, h: Float) {
@@ -657,6 +802,7 @@ private class NotchPillView(
 
     private fun setExpanded(target: Boolean) {
         expanded = target
+        onShift(target)
         expandAnim?.cancel()
         expandAnim = ValueAnimator.ofFloat(expandT, if (target) 1f else 0f).apply {
             duration = 260
@@ -672,7 +818,9 @@ private class NotchPillView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val c = ctrl ?: return false
         when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> animatePress(1f)
             MotionEvent.ACTION_UP -> {
+                animatePress(0f)
                 if (expanded) {
                     val w = width.toFloat()
                     val h = height.toFloat()
@@ -708,6 +856,7 @@ private class NotchPillView(
                     return true
                 }
             }
+            MotionEvent.ACTION_CANCEL -> animatePress(0f)
         }
         return true
     }
@@ -727,6 +876,8 @@ private class NotchPillView(
     override fun onDetachedFromWindow() {
         animator.cancel()
         expandAnim?.cancel()
+        pulseAnim?.cancel()
+        pressAnim?.cancel()
         super.onDetachedFromWindow()
     }
 }

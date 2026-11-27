@@ -57,6 +57,10 @@ class SpatializationStage {
     private var engageRampTotal = 0
     /** Set on a mode change; resolved to a real ramp length once the sample rate is known. */
     private var pendingEngageRamp = false
+    /** Release ramp: fade the effect out instead of cutting it when switching OFF. */
+    private var pendingReleaseRamp = false
+    private var releaseRampFrames = 0
+    private var releaseRampTotal = 0
 
     private var combDelay = IntArray(0)
     private var combIdx = IntArray(0)
@@ -147,8 +151,19 @@ class SpatializationStage {
             itdIdx = 0
             if (itdBuf.isNotEmpty()) java.util.Arrays.fill(itdBuf, 0f)
             if (mode != SpatializationMode.OFF) pendingEngageRamp = true
+            else pendingReleaseRamp = true
         }
-        if (mode == SpatializationMode.OFF || channelCount != 2 || sampleRateHz <= 0) return
+        if (mode == SpatializationMode.OFF) {
+            if (pendingReleaseRamp && channelCount == 2 && sampleRateHz > 0) {
+                pendingReleaseRamp = false
+                // 200 ms fade-out so toggling 8D / 16D off never clicks.
+                releaseRampTotal = (0.20 * sampleRateHz).toInt().coerceIn(1, sampleRateHz)
+                releaseRampFrames = releaseRampTotal
+            } else if (releaseRampFrames <= 0) {
+                return
+            }
+        }
+        if (channelCount != 2 || sampleRateHz <= 0) return
         ensureReverb(sampleRateHz)
         if (pendingEngageRamp) {
             // Poweramp-style engage: the effect fades in over 250 ms so
@@ -297,7 +312,11 @@ class SpatializationStage {
                     engageRampFrames--
                     1f - engageRampFrames.toFloat() / engageRampTotal.toFloat()
                 } else 1f
-                val blend = ramp * iWet
+                val rel = if (releaseRampFrames > 0) {
+                    releaseRampFrames--
+                    releaseRampFrames.toFloat() / releaseRampTotal.toFloat()
+                } else 1f
+                val blend = ramp * iWet * rel
                 output.putFloat(pos, (l + (outL - l) * blend).coerceIn(-1.0f, 1.0f))
                 output.putFloat(pos + Float.SIZE_BYTES, (r + (outR - r) * blend).coerceIn(-1.0f, 1.0f))
                 pos += 2 * Float.SIZE_BYTES
@@ -318,6 +337,9 @@ class SpatializationStage {
         engageRampFrames = 0
         engageRampTotal = 0
         pendingEngageRamp = false
+        pendingReleaseRamp = false
+        releaseRampFrames = 0
+        releaseRampTotal = 0
         itdBuf = FloatArray(0)
         itdIdx = 0
         itdMaxSamples = 0

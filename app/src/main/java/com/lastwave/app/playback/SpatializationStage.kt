@@ -238,7 +238,7 @@ class SpatializationStage {
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
-                val earFloor = 0.08f
+                val earFloor = 0.32f
                 val panL = earFloor + (1f - earFloor) * gL.coerceAtLeast(0f)
                 val panR = earFloor + (1f - earFloor) * gR.coerceAtLeast(0f)
 
@@ -259,7 +259,7 @@ class SpatializationStage {
                     itdBuf[itdIdx] = shadowState
                 }
                 val n = itdBuf.size
-                val panDepth = 0.85f
+                val panDepth = 0.62f
                 // Fractional (linearly interpolated) per-ear delay taps. The
                 // old taps stepped a whole sample at a time, so the swing
                 // moved in tiny stairs you could hear as a zipper on 8D and
@@ -287,8 +287,8 @@ class SpatializationStage {
                 }
                 itdIdx = if (n > 0) (itdIdx + 1) % n else 0
 
-                val dry = 0.35f
-                val wetMix = 0.30f
+                val dry = 0.48f
+                val wetMix = 0.22f
                 val outL = ((l * dry + coreL + monoLow * BASS_KEEP + wet * panL * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 val outR = ((r * dry + coreR + monoLow * BASS_KEEP + wet * panR * wetMix) * 0.80f).coerceIn(-1.0f, 1.0f)
                 // Fade the whole effect in over the engage ramp: ramp 0 is

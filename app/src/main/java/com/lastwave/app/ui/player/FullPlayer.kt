@@ -1345,7 +1345,8 @@ internal fun FullPlayer(
                                 modifier = Modifier
                                     .align(Alignment.CenterHorizontally)
                                     .padding(horizontal = 28.dp)
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    .height(112.dp),
                             ) {
                                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1363,6 +1364,7 @@ internal fun FullPlayer(
                                                     LocalLiquidGlass.current,
                                                     LiquidGlassPreset.FloatingControls,
                                                 ),
+                                                modifier = Modifier.weight(1f).height(32.dp),
                                             ) {
                                                 Text(
                                                     text = pathOption.label,

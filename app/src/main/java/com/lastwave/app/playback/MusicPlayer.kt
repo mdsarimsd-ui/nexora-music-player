@@ -654,6 +654,15 @@ class MusicPlayer @Inject constructor(
         audioSinks.forEach { it.spatializer.speedScale = clamped }
     }
 
+    /** Effect strength (0 subtle .. 1 full) for 8D / 16D. */
+    @Volatile private var spatialIntensity: Float = 1f
+
+    fun setSpatialIntensity(intensity: Float) {
+        val clamped = intensity.coerceIn(0f, 1f)
+        spatialIntensity = clamped
+        audioSinks.forEach { it.spatializer.intensity = clamped }
+    }
+
     fun updateMusicHapticsConfig(newConfig: com.lastwave.app.playback.haptics.MusicHapticsConfig) {
         musicHapticsController.updateConfig(newConfig)
         applicationScope.launch {
@@ -1853,6 +1862,7 @@ class MusicPlayer @Inject constructor(
                     createdSink.spatializer.mode = spatializationMode
                     createdSink.spatializer.path = spatialPath
                     createdSink.spatializer.speedScale = spatialSpeed
+                    createdSink.spatializer.intensity = spatialIntensity
                     runCatching {
                         routedDacDeviceId?.let { id -> findOutputDevice(id)?.let(createdSink::setPreferredDevice) }
                     }

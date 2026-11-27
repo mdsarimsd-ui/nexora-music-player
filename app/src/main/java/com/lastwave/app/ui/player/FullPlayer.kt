@@ -536,6 +536,7 @@ internal fun FullPlayer(
     val spatialMode by playerViewModel.spatialization.collectAsStateWithLifecycle()
     val spatialPathUi by playerViewModel.spatialPath.collectAsStateWithLifecycle()
     val spatialSpeedUi by playerViewModel.spatialSpeed.collectAsStateWithLifecycle()
+    val spatialIntensityUi by playerViewModel.spatialIntensity.collectAsStateWithLifecycle()
     val signalPath by player.signalPath.collectAsStateWithLifecycle()
     val usbDac by player.usbDacState.collectAsStateWithLifecycle()
     var isArtworkDragging by remember(track.videoId, track.title) { mutableStateOf(false) }
@@ -1332,6 +1333,7 @@ internal fun FullPlayer(
                             // 8D / 16D movement strip: pick the path the source
                             // travels and how fast it circles around the head.
                             var speedDrag by remember { mutableStateOf<Float?>(null) }
+                            var intensityDrag by remember { mutableStateOf<Float?>(null) }
                             LiquidGlassSurface(
                                 onClick = {},
                                 shape = RoundedCornerShape(24.dp),
@@ -1346,7 +1348,7 @@ internal fun FullPlayer(
                                     .align(Alignment.CenterHorizontally)
                                     .padding(horizontal = 28.dp)
                                     .fillMaxWidth()
-                                    .height(112.dp),
+                                    .height(168.dp),
                             ) {
                                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1395,6 +1397,29 @@ internal fun FullPlayer(
                                         )
                                         Text(
                                             text = "Fast",
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "Subtle",
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                        Slider(
+                                            value = intensityDrag ?: spatialIntensityUi,
+                                            onValueChange = { intensityDrag = it },
+                                            onValueChangeFinished = {
+                                                intensityDrag?.let { playerViewModel.setSpatialIntensity(it) }
+                                                intensityDrag = null
+                                            },
+                                            valueRange = 0f..1f,
+                                            steps = 9,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 10.dp),
+                                        )
+                                        Text(
+                                            text = "Full",
                                             style = MaterialTheme.typography.labelSmall,
                                         )
                                     }

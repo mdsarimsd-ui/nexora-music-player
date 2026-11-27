@@ -15,6 +15,7 @@ import javax.inject.Singleton
 private const val SPATIAL_KEY_PREFIX = "lw_spatial_track_"
 private const val SPATIAL_PATH_PREFIX = "lw_spatial_path_"
 private const val SPATIAL_SPEED_PREFIX = "lw_spatial_speed_"
+private const val SPATIAL_INTENSITY_PREFIX = "lw_spatial_intensity_"
 private const val SPATIAL_KEY_MAX_LENGTH = 160
 
 /**
@@ -62,6 +63,17 @@ class SpatializerPreferences @Inject constructor(
         }
     }
 
+    /** Effect strength (0 subtle .. 1 full), default 1. */
+    fun intensityFor(trackKey: String): Flow<Float> = dataStore.data.map { prefs ->
+        prefs[intensityPreferenceKey(trackKey)]?.coerceIn(0f, 1f) ?: 1f
+    }
+
+    suspend fun setIntensity(trackKey: String, intensity: Float) {
+        dataStore.edit { prefs ->
+            prefs[intensityPreferenceKey(trackKey)] = intensity.coerceIn(0f, 1f)
+        }
+    }
+
     private fun preferenceKey(trackKey: String) =
         stringPreferencesKey(SPATIAL_KEY_PREFIX + trackKey.take(SPATIAL_KEY_MAX_LENGTH))
 
@@ -70,6 +82,9 @@ class SpatializerPreferences @Inject constructor(
 
     private fun speedPreferenceKey(trackKey: String) =
         floatPreferencesKey(SPATIAL_SPEED_PREFIX + trackKey.take(SPATIAL_KEY_MAX_LENGTH))
+
+    private fun intensityPreferenceKey(trackKey: String) =
+        floatPreferencesKey(SPATIAL_INTENSITY_PREFIX + trackKey.take(SPATIAL_KEY_MAX_LENGTH))
 
     private fun decode(stored: String?): SpatializationMode = when (stored) {
         SpatializationMode.D8.name -> SpatializationMode.D8

@@ -42,6 +42,8 @@ class SpatializationStage {
     @Volatile var path: SpatialPath = SpatialPath.CLASSIC
     /** Rotation / swing speed multiplier (0.5x slow .. 2x fast). */
     @Volatile var speedScale: Float = 1f
+    /** Effect strength: 1 = full 8D / 16D swirl, lower = subtle, 0 = bypass. */
+    @Volatile var intensity: Float = 1f
     /** Last mode process() saw, so a fresh mode restarts its swing from 0. */
     private var lastAppliedMode: SpatializationMode = SpatializationMode.OFF
 
@@ -160,6 +162,7 @@ class SpatializationStage {
             output.order(ByteOrder.LITTLE_ENDIAN)
             val pathNow = path
             val speed = speedScale.coerceIn(0.25f, 3.0f).toDouble()
+            val iWet = intensity.coerceIn(0f, 1f)
             // Orbit and figure-8 drive the circle parametrically for BOTH 8D
             // and 16D; Classic keeps the original behavior (full circle for
             // 8D, ear-to-ear swing for 16D). Figure-8 runs a touch faster so
@@ -294,8 +297,9 @@ class SpatializationStage {
                     engageRampFrames--
                     1f - engageRampFrames.toFloat() / engageRampTotal.toFloat()
                 } else 1f
-                output.putFloat(pos, (l + (outL - l) * ramp).coerceIn(-1.0f, 1.0f))
-                output.putFloat(pos + Float.SIZE_BYTES, (r + (outR - r) * ramp).coerceIn(-1.0f, 1.0f))
+                val blend = ramp * iWet
+                output.putFloat(pos, (l + (outL - l) * blend).coerceIn(-1.0f, 1.0f))
+                output.putFloat(pos + Float.SIZE_BYTES, (r + (outR - r) * blend).coerceIn(-1.0f, 1.0f))
                 pos += 2 * Float.SIZE_BYTES
             }
             panRad = theta

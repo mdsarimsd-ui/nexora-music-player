@@ -411,10 +411,13 @@ class PlayerViewModel @Inject constructor(
             runCatching {
                 val path = spatializerPreferences.pathFor(globalSpatialKey).first()
                 val speed = spatializerPreferences.speedFor(globalSpatialKey).first()
+                val intensity = spatializerPreferences.intensityFor(globalSpatialKey).first()
                 _spatialPath.value = path
                 _spatialSpeed.value = speed
+                _spatialIntensity.value = intensity
                 player.setSpatialPath(path)
                 player.setSpatialSpeed(speed)
+                player.setSpatialIntensity(intensity)
             }
         }
     }
@@ -432,6 +435,8 @@ class PlayerViewModel @Inject constructor(
     val spatialPath = _spatialPath.asStateFlow()
     private val _spatialSpeed = MutableStateFlow(1f)
     val spatialSpeed = _spatialSpeed.asStateFlow()
+    private val _spatialIntensity = MutableStateFlow(1f)
+    val spatialIntensity = _spatialIntensity.asStateFlow()
 
     /** Picks the movement path the 8D / 16D source travels; saved globally. */
     fun setSpatialPath(path: com.lastwave.app.playback.SpatialPath) {
@@ -446,6 +451,14 @@ class PlayerViewModel @Inject constructor(
         _spatialSpeed.value = clamped
         player.setSpatialSpeed(clamped)
         viewModelScope.launch { spatializerPreferences.setSpeed(globalSpatialKey, clamped) }
+    }
+
+    /** Sets how strong the 8D / 16D movement sounds (0 subtle .. 1 full); saved globally. */
+    fun setSpatialIntensity(intensity: Float) {
+        val clamped = intensity.coerceIn(0f, 1f)
+        _spatialIntensity.value = clamped
+        player.setSpatialIntensity(clamped)
+        viewModelScope.launch { spatializerPreferences.setIntensity(globalSpatialKey, clamped) }
     }
 
     // Account controls project the same state as the heart. A second status read

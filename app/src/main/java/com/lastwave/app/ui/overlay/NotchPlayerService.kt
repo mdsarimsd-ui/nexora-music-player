@@ -20,6 +20,8 @@ import android.graphics.Typeface
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.PlaybackState
+import android.graphics.Rect
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -60,11 +62,14 @@ object NotchPlayerPrefs {
 }
 
 /**
- * Liquid-glass "notch player": a Dynamic Island style pill floating just
- * below the camera cutout whenever Nexora holds a media session. Collapsed
- * it is a small glass pill with artwork, live sound bars and a progress
- * edge; tap to expand into a full glass card with seek and transport
- * controls. Swipe the pill up to hide it until the next track.
+ * Liquid-glass "notch player": a Dynamic Island style glass pill that wraps
+ * the camera cutout whenever Nexora holds a media session, sized a step
+ * bigger than the system media pill. The camera hole is read from the
+ * display cutout and carved out of the glass, so the camera is never
+ * covered. Collapsed it is a wide glass pill with artwork, title and a
+ * play / pause button beside the camera; tap the pill to expand into a full
+ * glass card with seek and transport controls. Swipe the pill up to hide it
+ * until the next track.
  */
 class NotchPlayerService : Service() {
 
@@ -159,10 +164,29 @@ class NotchPlayerService : Service() {
 
     private fun addPill() {
         if (added || view == null) return
+        val density = resources.displayMetrics.density
+        val screenW = resources.displayMetrics.widthPixels
+        // Read the punch hole from the display cutout so the pill wraps the
+        // camera: the window centers on the hole and the view carves the
+        // hole out of the glass instead of covering it.
+        var cutFound = false
+        var cutCx = screenW / 2f
+        var cutCy = (18 * density).toInt().toFloat()
+        var cutR = (10 * density)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                val cut = wm?.currentWindowMetrics?.windowInsets?.displayCutout
+                val r: Rect? = cut?.boundingRects?.firstOrNull()
+                if (r != null && r.width() > 0) {
+                    cutFound = true
+                    cutCx = (r.left + r.right) / 2f
+                    cutCy = (r.top + r.bottom) / 2f
+                    cutR = maxOf(r.width(), r.height()) / 2f
+                }
+            }
+        }
+        val pillH = NotchPillView.collapsedHeightPx(density)
         if (params == null) {
-            val density = resources.displayMetrics.density
-            val sbId = resources.getIdentifier("status_bar_height", "dimen", "android")
-            val statusBar = if (sbId > 0) resources.getDimensionPixelSize(sbId) else (24 * density).toInt()
             params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -172,9 +196,10 @@ class NotchPlayerService : Service() {
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                y = statusBar + (6 * density).toInt()
+                y = if (cutFound) (cutCy - pillH / 2f).toInt() else (6 * density).toInt()
             }
         }
+        view!!.setCutout(cutCx, cutR, cutFound, screenW)
         runCatching {
             wm?.addView(view, params)
             added = true
@@ -223,9 +248,29 @@ private class NotchPillView(
     private var durationMs = 0L
     private var art: Bitmap? = null
 
+    // Camera cutout: absolute screen center-x of the hole, its radius and
+    // the screen width, so the view can place the carved hole wherever the
+    // centered pill currently sits.
+    private var cutCxScreen = 0f
+    private var cutR = 0f
+    private var cutFound = false
+    private var screenW = resources.displayMetrics.widthPixels
+
+    fun setCutout(cxScreen: Float, radius: Float, found: Boolean, screenWpx: Int) {
+        cutCxScreen = cxScreen
+        cutR = radius
+        cutFound = found
+        screenW = screenWpx
+        invalidate()
+    }
+
+    companion object {
+        fun collapsedHeightPx(density: Float): Int = (50 * density).toInt()
+    }
+
     private val density = resources.displayMetrics.density
-    private val collapsedW = (118 * density).toInt()
-    private val collapsedH = (30 * density).toInt()
+    private val collapsedW = (198 * density).toInt()
+    private val collapsedH = (50 * density).toInt()
     private val expandedH = (162 * density).toInt()
     private val expandedW: Int
         get() = min(
@@ -348,12 +393,14 @@ private class NotchPillView(
         val w = width.toFloat()
         val h = height.toFloat()
         val r = if (expanded) 26f * density else h / 2f
-        val alphaTop = if (expanded) 0x6E else 0x5C
+        // Liquid glass: a lighter frosted body than the old solid pill, with
+        // a cool tint, a moving sheen while playing and a hairline rim.
+        val alphaTop = if (expanded) 0x66 else 0x50
         fill.shader = LinearGradient(
             0f, 0f, 0f, h,
             intArrayOf(
-                Color.argb(alphaTop, 54, 62, 70),
-                Color.argb(if (expanded) 0xE8 else 0xD8, 9, 11, 15),
+                Color.argb(alphaTop, 168, 184, 202),
+                Color.argb(if (expanded) 0xE6 else 0xD2, 10, 12, 16),
             ),
             null,
             Shader.TileMode.CLAMP,
@@ -365,39 +412,77 @@ private class NotchPillView(
             Shader.TileMode.CLAMP,
         )
         sheen.shader = LinearGradient(
-            0f, 0f, w * 0.7f, h,
-            intArrayOf(0x26FFFFFF, 0x00FFFFFF),
+            w * (0.15f + 0.25f * sin(phase)), 0f, w * (0.55f + 0.25f * sin(phase)), h,
+            intArrayOf(0x2EFFFFFF, 0x00FFFFFF),
             null,
             Shader.TileMode.CLAMP,
         )
+        // Camera hole: absolute screen x of the cutout mapped into this
+        // view, carved out of the glass so the camera is never covered.
+        val holeY = collapsedH / 2f
+        val cutX = if (cutFound) cutCxScreen - (screenW - w) / 2f else -1f
+        val holeR = cutR + 3.5f * density
+        val clipShape = android.graphics.Path()
+        clipShape.addRoundRect(RectF(0f, 0f, w, h), r, r, android.graphics.Path.Direction.CW)
+        val hasHole = cutFound && cutX > 0f
+        if (hasHole) {
+            clipShape.addCircle(cutX, holeY, holeR, android.graphics.Path.Direction.CW)
+            clipShape.fillType = android.graphics.Path.FillType.EVEN_ODD
+        }
         shape.reset()
         shape.addRoundRect(RectF(0f, 0f, w, h), r, r, android.graphics.Path.Direction.CW)
         canvas.save()
-        canvas.clipPath(shape)
+        canvas.clipPath(clipShape)
         canvas.drawRect(0f, 0f, w, h, fill)
         canvas.drawRect(0f, 0f, w, h, sheen)
         canvas.restore()
         canvas.drawPath(shape, rim)
+        if (hasHole) {
+            ring.color = 0x40FFFFFF
+            canvas.drawCircle(cutX, holeY, holeR, ring)
+        }
         if (expanded) drawExpanded(canvas, w, h) else drawCollapsed(canvas, w, h)
     }
 
     private fun drawCollapsed(canvas: Canvas, w: Float, h: Float) {
-        val r = (h - 8f * density) / 2f
-        val cx = 4f * density + r
-        val cy = h / 2f
-        drawArt(canvas, cx, cy, r)
-        bar.color = 0xCCFFFFFF.toInt()
-        var bx = cx + r + 5f * density
-        val base = 4f * density
-        val maxH = h - 10f * density
-        for (i in 0 until 4) {
-            val amp = if (playing) 0.5f + 0.5f * abs(sin(phase + i * 0.85f)) else 0.12f
-            val bh = base + (maxH - base) * amp
-            canvas.drawRoundRect(
-                RectF(bx, cy - bh / 2f, bx + 2.6f * density, cy + bh / 2f),
-                1.3f * density, 1.3f * density, bar,
-            )
-            bx += 5f * density
+        val holeY = collapsedH / 2f
+        val cutX = if (cutFound) cutCxScreen - (screenW - w) / 2f else -1f
+        val hasHole = cutFound && cutX > 0f
+        val holeLeft = if (hasHole) cutX - cutR - 5f * density else w * 0.46f
+        val holeRight = if (hasHole) cutX + cutR + 5f * density else w * 0.46f
+        // Album art on the left cap.
+        val r = (h - 14f * density) / 2f
+        val cx = 6f * density + r
+        drawArt(canvas, cx, holeY, r)
+        // Title beside the art, never crossing the camera.
+        val tx = cx + r + 7f * density
+        val avail = holeLeft - tx - 4f * density
+        if (avail > 10f * density) {
+            val label = if (artist.isNotBlank()) "$title \u00b7 $artist" else title
+            val t = TextUtils.ellipsize(label, titlePaint, avail, TextUtils.TruncateAt.END).toString()
+            titlePaint.textSize = 13f * density
+            canvas.drawText(t, tx, holeY - (titlePaint.descent() + titlePaint.ascent()) / 2f, titlePaint)
+        }
+        // Play / pause on the right cap.
+        val pr = (h - 20f * density) / 2f
+        val px = holeRight + 6f * density + pr
+        if (px + pr <= w - 3f * density) {
+            glyph.color = 0x2EFFFFFF
+            canvas.drawCircle(px, holeY, pr, glyph)
+            glyph.color = Color.WHITE
+            if (playing) {
+                val bw = 2.8f * density
+                val bh = 9f * density
+                canvas.drawRoundRect(RectF(px - 3.6f * density, holeY - bh / 2, px - 0.8f * density, holeY + bh / 2), 1.3f * density, 1.3f * density, glyph)
+                canvas.drawRoundRect(RectF(px + 0.8f * density, holeY - bh / 2, px + 3.6f * density, holeY + bh / 2), 1.3f * density, 1.3f * density, glyph)
+            } else {
+                val path = android.graphics.Path()
+                path.moveTo(px - 3.2f * density, holeY - 5.5f * density)
+                path.lineTo(px + 5.2f * density, holeY)
+                path.lineTo(px - 3.2f * density, holeY + 5.5f * density)
+                path.close()
+                canvas.drawPath(path, glyph)
+            }
         }
         if (durationMs > 0) {
             track.color = 0x24FFFFFF
@@ -406,6 +491,15 @@ private class NotchPillView(
             progress.color = 0xE6C6F53F.toInt()
             canvas.drawRoundRect(RectF(0f, h - 1.6f * density, w * frac, h), 1f, 1f, progress)
         }
+    }
+
+    /** Screen-x of the play / pause button in the collapsed pill, for taps. */
+    private fun collapsedPlayX(w: Float): Float {
+        val holeY = collapsedH / 2f
+        val cutX = if (cutFound) cutCxScreen - (screenW - w) / 2f else -1f
+        val hasHole = cutFound && cutX > 0f
+        val holeRight = if (hasHole) cutX + cutR + 5f * density else w * 0.46f
+        return holeRight + 6f * density + (collapsedH - 20f * density) / 2f
     }
 
     private fun drawArt(canvas: Canvas, cx: Float, cy: Float, r: Float) {
@@ -544,7 +638,12 @@ private class NotchPillView(
                         openApp()
                     }
                 } else {
-                    setExpanded(true)
+                    val pw = width.toFloat()
+                    if (abs(event.x - collapsedPlayX(pw)) < 18 * density && abs(event.y - collapsedH / 2f) < 18 * density) {
+                        if (playing) c.transportControls.pause() else c.transportControls.play()
+                    } else {
+                        setExpanded(true)
+                    }
                 }
             }
             MotionEvent.ACTION_MOVE -> {

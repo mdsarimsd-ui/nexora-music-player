@@ -90,6 +90,23 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
             .getOrNull()
         super.onCreate(savedInstanceState)
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
+        // Crash-report gate: when the previous session died with a real crash
+        // record (not a routine background kill), surface it before anything
+        // else so a build that cannot start can still be diagnosed on-device.
+        runCatching { com.lastwave.app.ui.CrashGate.pendingReport(this) }
+            .getOrNull()
+            ?.let { report ->
+                setContent {
+                    com.lastwave.app.ui.CrashReportGate(
+                        report = report,
+                        onContinue = {
+                            runCatching { com.lastwave.app.ui.CrashGate.clearShown(this@MainShellActivity) }
+                            recreate()
+                        },
+                    )
+                }
+                return
+            }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Adopt choices made via system Settings -> App languages so the
             // in-app picker shows the truth. The framework recreates us itself.

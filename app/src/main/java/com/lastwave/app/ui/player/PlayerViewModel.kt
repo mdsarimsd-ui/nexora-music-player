@@ -408,12 +408,14 @@ class PlayerViewModel @Inject constructor(
             player.setSpatializationMode(mode)
         }
         viewModelScope.launch {
-            val path = spatializerPreferences.pathFor(globalSpatialKey).first()
-            val speed = spatializerPreferences.speedFor(globalSpatialKey).first()
-            _spatialPath.value = path
-            _spatialSpeed.value = speed
-            player.setSpatialPath(path)
-            player.setSpatialSpeed(speed)
+            runCatching {
+                val path = spatializerPreferences.pathFor(globalSpatialKey).first()
+                val speed = spatializerPreferences.speedFor(globalSpatialKey).first()
+                _spatialPath.value = path
+                _spatialSpeed.value = speed
+                player.setSpatialPath(path)
+                player.setSpatialSpeed(speed)
+            }
         }
     }
 

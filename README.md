@@ -20,6 +20,10 @@
 
 ---
 
+## Support the developer
+
+Nexora is free and open source. If it earns its place on your home screen, you can support development over UPI: **9112270039@fam** (Sarim Siddiqui).
+
 ## Overview
 
 Nexora is a fast, native YouTube Music client for Android that looks great and sounds even better. Built with Material 3 Expressive and Liquid Glass UI, it gives you a clean, fluid design that adapts to your music.

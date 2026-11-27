@@ -21,6 +21,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Vibration
 import com.lastwave.app.data.local.musicHapticsConfig
 import com.lastwave.app.playback.haptics.MusicHapticsConfig
@@ -728,6 +729,47 @@ internal fun AboutCard(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Support the dev: opens any UPI app with the payment pre-filled.
+            Surface(
+                shape = ExpressivePillShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = {
+                    val upiIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("upi://pay?pa=9112270039@fam&pn=Sarim%20Siddiqui&cu=INR"),
+                    )
+                    if (!startActivitySafely(context, upiIntent)) {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("nexora_upi", "9112270039@fam"))
+                        android.widget.Toast.makeText(
+                            context,
+                            "UPI ID copied: 9112270039@fam",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Support the dev (UPI)",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }

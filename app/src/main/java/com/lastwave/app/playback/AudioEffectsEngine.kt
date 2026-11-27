@@ -515,7 +515,7 @@ class AudioEffectsEngine @Inject constructor(
             val p3 = gainsDb[(index + 2).coerceAtMost(gainsDb.lastIndex)]
             val t2 = t * t
             val t3 = t2 * t
-            return 0.5f * (
+            val curve = 0.5f * (
                 2f * p1 +
                     (-p0 + p2) * t +
                     (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
@@ -525,9 +525,9 @@ class AudioEffectsEngine @Inject constructor(
             // settings the Catmull-Rom curve can peak past the slider values
             // themselves, which reads as an unintended boost and can clip.
             // Keep the interpolated gain inside the envelope of the sliders.
-            val low = gainsDb.minOrNull() ?: 0f
-            val high = gainsDb.maxOrNull() ?: 0f
-            return curve.coerceIn(minOf(low, high), maxOf(low, high))
+            val curveLow = gainsDb.minOrNull() ?: 0f
+            val curveHigh = gainsDb.maxOrNull() ?: 0f
+            return curve.coerceIn(minOf(curveLow, curveHigh), maxOf(curveLow, curveHigh))
         }
     }
 }

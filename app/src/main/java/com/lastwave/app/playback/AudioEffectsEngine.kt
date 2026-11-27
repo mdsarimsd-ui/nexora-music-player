@@ -521,6 +521,13 @@ class AudioEffectsEngine @Inject constructor(
                     (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
                     (-p0 + 3f * p1 - 3f * p2 + p3) * t3
                 )
+            // Spline curves overshoot: between two very different band
+            // settings the Catmull-Rom curve can peak past the slider values
+            // themselves, which reads as an unintended boost and can clip.
+            // Keep the interpolated gain inside the envelope of the sliders.
+            val low = gainsDb.minOrNull() ?: 0f
+            val high = gainsDb.maxOrNull() ?: 0f
+            return curve.coerceIn(minOf(low, high), maxOf(low, high))
         }
     }
 }

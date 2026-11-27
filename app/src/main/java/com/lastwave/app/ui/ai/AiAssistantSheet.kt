@@ -48,9 +48,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -74,6 +72,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -203,13 +214,35 @@ fun AiAssistantSheet(
         }
     }
 
-    ModalBottomSheet(
+    // Pop-up style, built from the liquid glass research pass (Apple's iOS 26
+    // liquid glass language: a translucent material that blurs and tints what
+    // sits behind it, a light rim, a specular top shine). The assistant opens
+    // as a centered floating card that pops in, not a bottom sheet.
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
+    val popScale by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0.88f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 420f),
+        label = "aiPopupScale",
+    )
+    val popAlpha by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0f,
+        animationSpec = tween(160),
+        label = "aiPopupAlpha",
+    )
+    val composerFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(180)
+        composerFocus.requestFocus()
+    }
+    val cardInteraction = remember { MutableInteractionSource() }
+
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.Transparent,
-        scrimColor = Color.Transparent,
-        dragHandle = null,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         // Liquid glass: blur the app behind this dialog window, then let the
         // translucent card show it. Devices that refuse blur keep the tint.
@@ -220,29 +253,61 @@ fun AiAssistantSheet(
                     sheetWindow.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                     val d = sheetWindow.context.resources.displayMetrics.density
                     sheetWindow.attributes = sheetWindow.attributes.also {
-                        it.blurBehindRadius = (34 * d).toInt()
+                        it.blurBehindRadius = (40 * d).toInt()
                     }
                     sheetWindow.setDimAmount(0f)
                 }
             }
         }
-        // Floating Gemini-style card: hovered above the bottom edge, glass all around.
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 92.dp),
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.28f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { onDismiss },
+            contentAlignment = Alignment.Center,
         ) {
+        Surface(
+            shape = RoundedCornerShape(30.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.60f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.06f)),
+                ),
+            ),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .imePadding()
+                .graphicsLayer {
+                    scaleX = popScale
+                    scaleY = popScale
+                    alpha = popAlpha
+                }
+                .clickable(interactionSource = cardInteraction, indication = null) {},
+        ) {
+        Box {
+            // Specular top shine: the light edge liquid glass reads from.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.10f),
+                            0.35f to Color.Transparent,
+                        ),
+                    ),
+            )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
+                .heightIn(max = 560.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 16.dp),
+                .padding(top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -304,6 +369,13 @@ fun AiAssistantSheet(
                     Icon(
                         Icons.Filled.Settings,
                         contentDescription = "AI settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "Close Ask AI",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -526,9 +598,10 @@ fun AiAssistantSheet(
                         onValueChange = { requestInput = it },
                         placeholder = { Text("Ask anything: a mood, a vibe, a playlist idea") },
                         singleLine = true,
+                        shape = RoundedCornerShape(24.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(onSend = { send() }),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).focusRequester(composerFocus),
                     )
                     IconButton(
                         onClick = {
@@ -551,6 +624,8 @@ fun AiAssistantSheet(
                         Icon(Icons.Filled.Send, contentDescription = "Send")
                     }
                 }
+            }
+            }
         }
         }
     }

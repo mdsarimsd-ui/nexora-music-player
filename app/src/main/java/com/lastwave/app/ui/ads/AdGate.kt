@@ -48,8 +48,8 @@ object AdGate {
     }
 
     /** Warm the SDK once per process; safe to call on every open. */
-    fun init() {
-        runCatching { MobileAds.initialize {} }
+    fun init(context: Context) {
+        runCatching { MobileAds.initialize(context) {} }
     }
 
     /**
@@ -118,7 +118,7 @@ object AdGate {
     /** Used by MainActivity: warm the SDK, then try one show once launch UI settles. */
     fun warmAndMaybeShow(activity: Activity, delayMs: Long = 8_000L) {
         if (!enabled(activity)) return
-        init()
+        init(activity)
         Handler(Looper.getMainLooper()).postDelayed(
             { maybeShowInterstitial(activity) },
             delayMs,

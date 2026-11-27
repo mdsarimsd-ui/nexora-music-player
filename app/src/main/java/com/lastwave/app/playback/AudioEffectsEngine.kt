@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import com.lastwave.app.data.local.EQ_BAND_FREQS_HZ
+import com.lastwave.app.data.local.applyListeningComfort
 import com.lastwave.app.data.local.EQ_MAX_GAIN_DB
 import com.lastwave.app.data.local.EqualizerPreferences
 import com.lastwave.app.data.local.EqualizerPresets
@@ -325,8 +326,8 @@ class AudioEffectsEngine @Inject constructor(
         )
     }
 
-    private fun buildEqCurve(userEqEnabled: Boolean): FloatArray =
-        FloatArray(EQ_BAND_FREQS_HZ.size) { index ->
+    private fun buildEqCurve(userEqEnabled: Boolean): FloatArray {
+        val curve = FloatArray(EQ_BAND_FREQS_HZ.size) { index ->
             val studioGain = if (studioClarityEnabled) {
                 EqualizerPresets.STUDIO_MASTER.gainsDb.getOrElse(index) { 0f }
             } else 0f
@@ -336,6 +337,10 @@ class AudioEffectsEngine @Inject constructor(
             val combined = studioGain + userGain
             if (combined.isFinite()) combined.coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) else 0f
         }
+        // Same listening-comfort taming the native DSP path applies, so the
+        // fallback stage matches: long sessions stay easy on the ears.
+        return applyListeningComfort(curve)
+    }
 
     /**
      * [outputGainDb] is a uniform level change. It must stay out of the EQ

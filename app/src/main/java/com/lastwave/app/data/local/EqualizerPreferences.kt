@@ -18,6 +18,26 @@ import javax.inject.Singleton
 val EQ_BAND_FREQS_HZ = intArrayOf(25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000)
 const val EQ_MAX_GAIN_DB = 8f
 
+/**
+ * Gentle always-on listening-fatigue taming, applied to the final EQ curve
+ * wherever it is pushed to a DSP. Long sessions make the 2-6 kHz presence
+ * region and the 6-10 kHz sibilance range feel harsh and tiring (hearing is
+ * most sensitive there, so even modest boosts wear the ear down fast), and
+ * vocals sit right in the middle of it. A small fixed dip across those bands
+ * keeps voices and treble smooth over hours without dulling the air.
+ */
+fun applyListeningComfort(gainsDb: FloatArray): FloatArray {
+    val comfortDb = floatArrayOf(
+        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,   // 25 Hz .. 1 kHz: untouched
+        -0.3f, -0.6f, -1.0f, -1.4f, -0.8f, -0.3f, // 1.6K, 2.5K, 4K, 6.3K, 10K, 16K
+    )
+    if (gainsDb.size != comfortDb.size) return gainsDb
+    return FloatArray(gainsDb.size) { index ->
+        val gain = gainsDb[index]
+        if (gain.isFinite()) (gain + comfortDb[index]).coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) else 0f
+    }
+}
+
 /** Compact frequency label under each band slider ("63", "1K", "16K"...). */
 fun eqBandLabel(hz: Int): String = if (hz >= 1000) "${hz / 1000}K" else "$hz"
 

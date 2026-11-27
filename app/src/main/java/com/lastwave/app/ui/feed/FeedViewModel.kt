@@ -48,6 +48,7 @@ import com.lastwave.app.data.feed.InstagramTrending
 import com.lastwave.app.data.feed.TrendingInstagramEntry
 import com.lastwave.app.data.feed.SongRows
 import com.lastwave.app.data.playlist.SavedPlaylist
+import java.time.LocalDate
 
 @Immutable
 data class FeedUiState(
@@ -202,56 +203,15 @@ class FeedViewModel @Inject constructor(
     private var loadMoreJob: Job? = null
     private var requestGeneration: Long = 0L
     private var lastLoadedMillis: Long = 0L
+    private var lastRowsLoadDay: LocalDate? = null
+    private var rowsRefreshRound = 0
 
     init {
         loadDiscovery()
         loadTopGenres()
         // Home rebuild: the All-Time Hits row and the Instagram trending row
         // resolve independently of the main feed fetch.
-        viewModelScope.launch(Dispatchers.IO) {
-            val hits = runCatching { innerTube.searchSongs("all time hits", limit = 50) }
-                .getOrDefault(emptyList())
-            _allTimeHits.value = hits
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            val results = SongRows.DEFS.map { def ->
-                def.id to runCatching { innerTube.searchSongs(def.query, limit = 50) }
-                    .getOrDefault(emptyList())
-            }
-            _songRows.value = results.toMap().filterValues { it.isNotEmpty() }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            val history = runCatching { songStats.recentlyPlayed(40) }.getOrDefault(emptyList())
-            val most = runCatching { songStats.mostPlayedSince(days = 90, limit = 100) }
-                .getOrDefault(emptyList())
-            val played = (most.sortedByDescending { it.playCount } + history)
-                .filter { !it.videoId.isNullOrBlank() }
-                .distinctBy { it.trackKey }
-            _forYou.value = played.take(50).map { stats ->
-                YouTubeMusicTrack(
-                    videoId = stats.videoId!!,
-                    title = stats.title,
-                    artist = stats.artist,
-                    artworkUrl = stats.artworkUrl,
-                )
-            }
-            if (_forYou.value.isNotEmpty()) {
-                val topArtists = most.sortedByDescending { it.playCount }
-                    .map { com.lastwave.app.util.ArtistHelper.primaryArtist(it.artist) }
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .take(3)
-                val related = topArtists.flatMap { artist ->
-                    runCatching { innerTube.searchSongs("$artist songs", limit = 30) }
-                        .getOrDefault(emptyList())
-                }
-                val playedIds = _forYou.value.map { it.videoId }.toSet()
-                _moreLike.value = related
-                    .filter { it.videoId !in playedIds }
-                    .distinctBy { it.videoId }
-                    .take(60)
-            }
-        }
+        loadSongRows()
         viewModelScope.launch(Dispatchers.IO) {
             val resolved = InstagramTrending.CURRENT.map { entry ->
                 val track = runCatching {
@@ -339,7 +299,69 @@ class FeedViewModel @Inject constructor(
     fun refresh() {
         loadDiscovery(forceRotate = true)
         loadTopGenres()
+        loadSongRows()
         fetchFeed(refreshing = true)
+    }
+
+    /**
+     * The home song rows (Trending, Global, Hindi, ... plus All-Time Hits and
+     * the For You / More Like picks). These used to load only once per
+     * process, so a phone that kept the app in memory showed yesterday's
+     * songs all day. They now reload on every pull-to-refresh and whenever
+     * the calendar day changes, with a rotating query variant and a shuffle
+     * so the songs actually change.
+     */
+    private fun loadSongRows() {
+        lastRowsLoadDay = LocalDate.now()
+        rowsRefreshRound++
+        val variant = ROW_QUERY_VARIANTS[(LocalDate.now().dayOfYear + rowsRefreshRound) % ROW_QUERY_VARIANTS.size]
+        viewModelScope.launch(Dispatchers.IO) {
+            val hits = runCatching { innerTube.searchSongs("all time hits$variant", limit = 50) }
+                .getOrDefault(emptyList())
+            if (hits.isNotEmpty()) _allTimeHits.value = hits.shuffled()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val results = SongRows.DEFS.map { def ->
+                def.id to runCatching { innerTube.searchSongs(def.query + variant, limit = 50) }
+                    .getOrDefault(emptyList())
+            }
+            _songRows.value = results.toMap()
+                .filterValues { it.isNotEmpty() }
+                .mapValues { (_, tracks) -> tracks.shuffled() }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val history = runCatching { songStats.recentlyPlayed(40) }.getOrDefault(emptyList())
+            val most = runCatching { songStats.mostPlayedSince(days = 90, limit = 100) }
+                .getOrDefault(emptyList())
+            val played = (most.sortedByDescending { it.playCount } + history)
+                .filter { !it.videoId.isNullOrBlank() }
+                .distinctBy { it.trackKey }
+            _forYou.value = played.take(50).map { stats ->
+                YouTubeMusicTrack(
+                    videoId = stats.videoId!!,
+                    title = stats.title,
+                    artist = stats.artist,
+                    artworkUrl = stats.artworkUrl,
+                )
+            }.shuffled()
+            if (_forYou.value.isNotEmpty()) {
+                val topArtists = most.sortedByDescending { it.playCount }
+                    .map { com.lastwave.app.util.ArtistHelper.primaryArtist(it.artist) }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(3)
+                val related = topArtists.flatMap { artist ->
+                    runCatching { innerTube.searchSongs("$artist songs", limit = 30) }
+                        .getOrDefault(emptyList())
+                }
+                val playedIds = _forYou.value.map { it.videoId }.toSet()
+                _moreLike.value = related
+                    .filter { it.videoId !in playedIds }
+                    .distinctBy { it.videoId }
+                    .take(60)
+                    .shuffled()
+            }
+        }
     }
 
     fun loadTopGenres() {
@@ -362,7 +384,11 @@ class FeedViewModel @Inject constructor(
         // refresh when there's nothing yet or the data is stale.
         val hasContent = _uiState.value.feedData.hasContent
         val stale = System.currentTimeMillis() - lastLoadedMillis > STALE_AFTER_MILLIS
-        if (!hasContent || stale) refresh()
+        // A process that survives overnight (app kept in memory) must still
+        // pick up a fresh day of songs: the calendar day changing triggers a
+        // full rebuild of the song rows.
+        val newDay = lastRowsLoadDay != null && lastRowsLoadDay != LocalDate.now()
+        if (!hasContent || stale || newDay) refresh()
     }
 
     fun playInfiniteRadio() {
@@ -914,5 +940,9 @@ class FeedViewModel @Inject constructor(
 
     private companion object {
         const val STALE_AFTER_MILLIS = 90_000L
+
+        /** Light query rotations so each refresh pulls a genuinely different
+         *  slice of songs, not the same search results reshuffled. */
+        private val ROW_QUERY_VARIANTS = listOf("", " this week", " now", " new", " viral")
     }
 }

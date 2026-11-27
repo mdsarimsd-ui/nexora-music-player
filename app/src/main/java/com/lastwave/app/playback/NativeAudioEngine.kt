@@ -22,6 +22,7 @@ package com.lastwave.app.playback
 
 import android.util.Log
 import com.lastwave.app.data.local.EQ_MAX_GAIN_DB
+import com.lastwave.app.data.local.applyListeningComfort
 import com.lastwave.app.data.local.EqualizerPreferences
 import com.lastwave.app.data.local.SettingsPreferences
 import java.io.Closeable
@@ -159,7 +160,10 @@ class NativeAudioEngine @Inject constructor(
             val gain = gainsDb[index]
             if (gain.isFinite()) gain.coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) else 0f
         }
-        withHandle(Unit) { nativeSetEqualizer(it, enabled, safeGains) }
+        // Listening-comfort taming rides every EQ update here so long
+        // sessions stay easy on the ears, matching the fallback stage.
+        val shapedGains = applyListeningComfort(safeGains)
+        withHandle(Unit) { nativeSetEqualizer(it, enabled, shapedGains) }
     }
 
     /**

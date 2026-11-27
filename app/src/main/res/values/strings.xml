@@ -1568,7 +1568,7 @@
     <string name="recognize_error_network">The recognition service could not be reached. Check your connection and try again.</string>
     <!-- Donation prompt -->
     <string name="donation_prompt_title">Enjoying Nexora?</string>
-    <string name="donation_prompt_body">Nexora is free, no ads, no tracking. If it makes your music better, a small UPI donation keeps it moving.</string>
+    <string name="donation_prompt_body">Nexora is free and tracks nothing. Ads stay off unless you turn them on. If it makes your music better, a small UPI donation keeps it moving.</string>
     <string name="donation_prompt_support">Support via UPI</string>
     <string name="donation_prompt_later">Maybe later</string>
 </resources>

@@ -248,6 +248,9 @@ open class MainShellActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
         }
+        // Optional capped ads (off by default): warm the SDK when enabled,
+        // then at most 3 interstitials a day once launch UI settles.
+        com.lastwave.app.ui.ads.AdGate.warmAndMaybeShow(this)
         StartupTrail.mark("activity.content.set")
         // First drawn frame: if the process dies between content.set and
         // here, the killer lives in first composition (theme/backdrop/mini

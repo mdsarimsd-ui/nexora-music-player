@@ -1244,7 +1244,7 @@ fun SettingsScreen(
                         item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SectionLabel(stringResource(R.string.settings_section_appearance))
-                    SettingsGroup(rowCount = 16) { index, position ->
+                    SettingsGroup(rowCount = 17) { index, position ->
                         val notchCtx = LocalContext.current
                         when (index) {
                             0 -> ThemeModeSelectorCard(
@@ -1436,6 +1436,19 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setLegacyTrackMenu,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.legacy_track_menu"),
+                            )
+                            16 -> SettingsToggleCard(
+                                icon = Icons.Filled.BubbleChart,
+                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                title = "Support with ads",
+                                subtitle = "Off by default. On: at most 3 short ads a day, then the whole day stays ad-free. Donations still help most.",
+                                checked = com.lastwave.app.ui.ads.AdGate.enabled(notchCtx),
+                                onCheckedChange = { adsOn ->
+                                    com.lastwave.app.ui.ads.AdGate.setEnabled(notchCtx, adsOn)
+                                },
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "appearance.support_ads"),
                             )
                         }
                     }

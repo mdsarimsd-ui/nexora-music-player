@@ -98,6 +98,11 @@
             android:name="androidx.car.app.TintableAttributionIcon"
             android:resource="@drawable/ic_car_attribution" />
 
+        <!-- AdMob app ID: Google test placeholder until the real publisher ID replaces it -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
         <activity
             android:name=".MainShellActivity"
             android:exported="true"

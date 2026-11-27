@@ -13,6 +13,16 @@ enum class SpatializationMode(val label: String) {
     D16("16D"),
 }
 
+/** The path the 8D / 16D source travels around the head. */
+enum class SpatialPath(val label: String) {
+    /** Original behavior: full circle for 8D, ear-to-ear swing for 16D. */
+    CLASSIC("Classic"),
+    /** A full orbit around the head, for both 8D and 16D. */
+    ORBIT("Orbit"),
+    /** Lissajous figure-8: ear-to-ear sweep plus front-to-back depth. */
+    FIGURE8("Figure 8"),
+}
+
 /**
  * YouTube-style rotating-pan spatializer for the 8D / 16D toggle.
  *
@@ -28,6 +38,10 @@ enum class SpatializationMode(val label: String) {
  */
 class SpatializationStage {
     @Volatile var mode: SpatializationMode = SpatializationMode.OFF
+    /** Movement path the source travels (Classic / Orbit / Figure 8). */
+    @Volatile var path: SpatialPath = SpatialPath.CLASSIC
+    /** Rotation / swing speed multiplier (0.5x slow .. 2x fast). */
+    @Volatile var speedScale: Float = 1f
     /** Last mode process() saw, so a fresh mode restarts its swing from 0. */
     private var lastAppliedMode: SpatializationMode = SpatializationMode.OFF
 
@@ -63,14 +77,6 @@ class SpatializationStage {
     private var itdBuf = FloatArray(0)
     private var itdIdx = 0
     private var itdMaxSamples = 0
-
-    /** One full circle every 8 s for 8D; no circle for 16D. */
-    private val rotationHz: Double
-        get() = if (mode == SpatializationMode.D8) 1.0 / 8.0 else 0.0
-
-    /** 16D swings between the ears at 0.7 Hz (about every 1.4 s). */
-    private val alternationHz: Double
-        get() = if (mode == SpatializationMode.D16) 0.7 else 0.0
 
     private fun ensureReverb(sampleRateHz: Int) {
         if (sampleRateHz == reverbRateHz && combBuf.isNotEmpty()) return
@@ -152,8 +158,23 @@ class SpatializationStage {
         val originalOrder = output.order()
         try {
             output.order(ByteOrder.LITTLE_ENDIAN)
-            val rotationPerFrame = 2.0 * PI * rotationHz / sampleRateHz
-            val alternationPerFrame = 2.0 * PI * alternationHz / sampleRateHz
+            val pathNow = path
+            val speed = speedScale.coerceIn(0.25f, 3.0f).toDouble()
+            // Orbit and figure-8 drive the circle parametrically for BOTH 8D
+            // and 16D; Classic keeps the original behavior (full circle for
+            // 8D, ear-to-ear swing for 16D). Figure-8 runs a touch faster so
+            // the front-to-back leg stays lively.
+            val spinHz = when {
+                pathNow == SpatialPath.FIGURE8 -> 1.0 / 6.0
+                pathNow == SpatialPath.ORBIT -> 1.0 / 8.0
+                mode == SpatializationMode.D8 -> 1.0 / 8.0
+                else -> 0.0
+            } * speed
+            val swingHz = if (pathNow == SpatialPath.CLASSIC && mode == SpatializationMode.D16) {
+                0.7 * speed
+            } else 0.0
+            val rotationPerFrame = 2.0 * PI * spinHz / sampleRateHz
+            val alternationPerFrame = 2.0 * PI * swingHz / sampleRateHz
             var theta = panRad
             breatheRad = (breatheRad + rotationPerFrame * 0.25) % TAU
             // organic glide: pro 8D tools modulate rotation speed slightly so the
@@ -180,13 +201,27 @@ class SpatializationStage {
                 val lateral: Float
                 var behindness = 0f
                 if (rotationPerFrame > 0.0) {
-                    // Full circle around the head. The original stereo bed
-                    // stays in underneath so the mix never collapses to mono.
-                    gL = cos(theta).toFloat()
-                    gR = sin(theta).toFloat()
-                    lateral = gL
-                    // Front half of the circle is the positive sine side.
-                    behindness = (-sin(theta)).toFloat().coerceIn(0f, 1f)
+                    if (pathNow == SpatialPath.FIGURE8) {
+                        // Figure-8 (Lissajous): the source sweeps ear to ear
+                        // while its front-back depth follows a second sine, so
+                        // it crosses in front of you, dips behind the head and
+                        // returns, instead of tracing one flat circle.
+                        val lateralD = sin(theta)
+                        val depthD = 0.5 * sin(2.0 * theta)
+                        val tri = (lateralD + 1.0) * 0.5
+                        gL = cos(0.5 * PI * tri).toFloat()
+                        gR = sin(0.5 * PI * tri).toFloat()
+                        lateral = lateralD.toFloat()
+                        behindness = (-depthD).toFloat().coerceIn(0f, 1f)
+                    } else {
+                        // Full circle around the head. The original stereo bed
+                        // stays in underneath so the mix never collapses to mono.
+                        gL = cos(theta).toFloat()
+                        gR = sin(theta).toFloat()
+                        lateral = gL
+                        // Front half of the circle is the positive sine side.
+                        behindness = (-sin(theta)).toFloat().coerceIn(0f, 1f)
+                    }
                     theta += step
                     if (theta > TAU) theta %= TAU
                 } else {

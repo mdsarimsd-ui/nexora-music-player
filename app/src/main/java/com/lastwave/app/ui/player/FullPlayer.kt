@@ -287,6 +287,7 @@ import com.lastwave.app.data.playlist.SavedPlaylist
 import com.lastwave.app.data.playlist.LIKED_SONGS_MODE
 import com.lastwave.app.playback.MusicPlayer
 import com.lastwave.app.playback.SpatializationMode
+import com.lastwave.app.playback.SpatialPath
 import com.lastwave.app.playback.MusicPlayerState
 import com.lastwave.app.playback.PlaybackChromeState
 import com.lastwave.app.playback.formatSampleRateKHz
@@ -533,6 +534,8 @@ internal fun FullPlayer(
     val eq by eqViewModel.equalizer.collectAsStateWithLifecycle()
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val spatialMode by playerViewModel.spatialization.collectAsStateWithLifecycle()
+    val spatialPathUi by playerViewModel.spatialPath.collectAsStateWithLifecycle()
+    val spatialSpeedUi by playerViewModel.spatialSpeed.collectAsStateWithLifecycle()
     val signalPath by player.signalPath.collectAsStateWithLifecycle()
     val usbDac by player.usbDacState.collectAsStateWithLifecycle()
     var isArtworkDragging by remember(track.videoId, track.title) { mutableStateOf(false) }
@@ -1322,6 +1325,77 @@ internal fun FullPlayer(
                                         "Song options",
                                         modifier = Modifier.size(22.dp),
                                     )
+                                }
+                            }
+                        }
+                        if (currentTab == FullPlayerTab.NOW_PLAYING && spatialMode != SpatializationMode.OFF) {
+                            // 8D / 16D movement strip: pick the path the source
+                            // travels and how fast it circles around the head.
+                            var speedDrag by remember { mutableStateOf<Float?>(null) }
+                            LiquidGlassSurface(
+                                onClick = {},
+                                shape = RoundedCornerShape(24.dp),
+                                color = liquidGlassContainerColor(if (isThemeLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.14f)),
+                                contentColor = if (isThemeLight) Color(0xFF222226) else Color.White.copy(alpha = 0.94f),
+                                glassModifier = Modifier.liquidGlassChrome(
+                                    RoundedCornerShape(24.dp),
+                                    LocalLiquidGlass.current,
+                                    LiquidGlassPreset.FloatingControls,
+                                ),
+                                modifier = Modifier
+                                    .align(Alignment.CenterHorizontally)
+                                    .padding(horizontal = 28.dp)
+                                    .fillMaxWidth(),
+                            ) {
+                                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        listOf(SpatialPath.CLASSIC, SpatialPath.ORBIT, SpatialPath.FIGURE8).forEach { pathOption ->
+                                            val selected = spatialPathUi == pathOption
+                                            LiquidGlassSurface(
+                                                onClick = hapticClick { playerViewModel.setSpatialPath(pathOption) },
+                                                shape = CircleShape,
+                                                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                                                else liquidGlassContainerColor(if (isThemeLight) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.10f)),
+                                                contentColor = if (selected) MaterialTheme.colorScheme.primary
+                                                else (if (isThemeLight) Color(0xFF222226) else Color.White.copy(alpha = 0.88f)),
+                                                glassModifier = Modifier.liquidGlassChrome(
+                                                    CircleShape,
+                                                    LocalLiquidGlass.current,
+                                                    LiquidGlassPreset.FloatingControls,
+                                                ),
+                                            ) {
+                                                Text(
+                                                    text = pathOption.label,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "Slow",
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                        Slider(
+                                            value = speedDrag ?: spatialSpeedUi,
+                                            onValueChange = { speedDrag = it },
+                                            onValueChangeFinished = {
+                                                speedDrag?.let { playerViewModel.setSpatialSpeed(it) }
+                                                speedDrag = null
+                                            },
+                                            valueRange = 0.5f..2f,
+                                            steps = 5,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 10.dp),
+                                        )
+                                        Text(
+                                            text = "Fast",
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
                                 }
                             }
                         }

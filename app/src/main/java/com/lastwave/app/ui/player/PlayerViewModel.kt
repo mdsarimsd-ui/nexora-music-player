@@ -407,6 +407,14 @@ class PlayerViewModel @Inject constructor(
             _spatialization.value = mode
             player.setSpatializationMode(mode)
         }
+        viewModelScope.launch {
+            val path = spatializerPreferences.pathFor(globalSpatialKey).first()
+            val speed = spatializerPreferences.speedFor(globalSpatialKey).first()
+            _spatialPath.value = path
+            _spatialSpeed.value = speed
+            player.setSpatialPath(path)
+            player.setSpatialSpeed(speed)
+        }
     }
 
     /** Applies the now-playing toggle: session effect now, saved globally. */
@@ -414,6 +422,28 @@ class PlayerViewModel @Inject constructor(
         _spatialization.value = mode
         player.setSpatializationMode(mode)
         viewModelScope.launch { spatializerPreferences.setMode(globalSpatialKey, mode) }
+    }
+
+    // Movement path + speed for the global 8D / 16D effect: which way the
+    // source travels (Classic / Orbit / Figure 8) and how fast it circles.
+    private val _spatialPath = MutableStateFlow(com.lastwave.app.playback.SpatialPath.CLASSIC)
+    val spatialPath = _spatialPath.asStateFlow()
+    private val _spatialSpeed = MutableStateFlow(1f)
+    val spatialSpeed = _spatialSpeed.asStateFlow()
+
+    /** Picks the movement path the 8D / 16D source travels; saved globally. */
+    fun setSpatialPath(path: com.lastwave.app.playback.SpatialPath) {
+        _spatialPath.value = path
+        player.setSpatialPath(path)
+        viewModelScope.launch { spatializerPreferences.setPath(globalSpatialKey, path) }
+    }
+
+    /** Sets how fast the 8D / 16D source circles (0.5x .. 2x); saved globally. */
+    fun setSpatialSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.5f, 2f)
+        _spatialSpeed.value = clamped
+        player.setSpatialSpeed(clamped)
+        viewModelScope.launch { spatializerPreferences.setSpeed(globalSpatialKey, clamped) }
     }
 
     // Account controls project the same state as the heart. A second status read

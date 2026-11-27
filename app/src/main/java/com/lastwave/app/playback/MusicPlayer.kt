@@ -638,6 +638,22 @@ class MusicPlayer @Inject constructor(
         audioSinks.forEach { it.spatializer.mode = mode }
     }
 
+    /** Movement path for 8D / 16D (Classic / Orbit / Figure 8). */
+    @Volatile private var spatialPath: SpatialPath = SpatialPath.CLASSIC
+    /** Rotation / swing speed multiplier for 8D / 16D. */
+    @Volatile private var spatialSpeed: Float = 1f
+
+    fun setSpatialPath(path: SpatialPath) {
+        spatialPath = path
+        audioSinks.forEach { it.spatializer.path = path }
+    }
+
+    fun setSpatialSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.5f, 2f)
+        spatialSpeed = clamped
+        audioSinks.forEach { it.spatializer.speedScale = clamped }
+    }
+
     fun updateMusicHapticsConfig(newConfig: com.lastwave.app.playback.haptics.MusicHapticsConfig) {
         musicHapticsController.updateConfig(newConfig)
         applicationScope.launch {
@@ -1835,6 +1851,8 @@ class MusicPlayer @Inject constructor(
                     createdSink.syncInternalDirect(handleAudioFocus && !isSpatial && internalDirectWanted())
                     audioSinks.add(createdSink)
                     createdSink.spatializer.mode = spatializationMode
+                    createdSink.spatializer.path = spatialPath
+                    createdSink.spatializer.speedScale = spatialSpeed
                     runCatching {
                         routedDacDeviceId?.let { id -> findOutputDevice(id)?.let(createdSink::setPreferredDevice) }
                     }

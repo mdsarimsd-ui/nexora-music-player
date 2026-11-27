@@ -1221,17 +1221,6 @@ internal fun FullPlayer(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                             }
-                            // 8D / 16D strip visibility: it pops open whenever the
-                            // mode changes or you touch it, then folds away on its
-                            // own after a few idle seconds so the player stays clear.
-                            var spatialPanelOpen by remember { mutableStateOf(false) }
-                            var spatialPanelTick by remember { mutableIntStateOf(0) }
-                            LaunchedEffect(spatialPanelOpen, spatialMode, spatialPanelTick) {
-                                if (spatialPanelOpen && spatialMode != SpatializationMode.OFF) {
-                                    delay(5000)
-                                    spatialPanelOpen = false
-                                }
-                            }
                             Row(
                                 modifier = Modifier.align(Alignment.CenterEnd),
                                 verticalAlignment = Alignment.CenterVertically,

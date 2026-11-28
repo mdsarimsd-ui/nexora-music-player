@@ -681,7 +681,7 @@ private class NotchPillView(
         val rr = RectF(x, y, x + s, y + s)
         if (iconPaint.shader == null && iconBitmap == null) {
             try {
-                val dw = applicationInfo.loadIcon(packageManager)
+                val dw = context.applicationInfo.loadIcon(context.packageManager)
                 val bmp = android.graphics.Bitmap.createBitmap(s.toInt().coerceAtLeast(1), s.toInt().coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
                 val c = android.graphics.Canvas(bmp)
                 dw.setBounds(0, 0, bmp.width, bmp.height)

@@ -1321,7 +1321,8 @@ fun SettingsScreen(
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.liquid_glass"),
                             )
-                            15 -> SettingsToggleCard(
+                            15 -> {
+                                SettingsToggleCard(
                                 icon = Icons.Filled.BubbleChart,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1349,7 +1350,11 @@ fun SettingsScreen(
                                 },
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.notch_player"),
-                            )
+                                )
+                                if (com.lastwave.app.ui.overlay.NotchPlayerPrefs.enabled(notchCtx)) {
+                                    NotchLayoutControls(notchCtx)
+                                }
+                            }
                             7 -> SettingsToggleCard(
                                 icon = Icons.Filled.Apps,
                                 iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
@@ -3457,5 +3462,71 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun NotchLayoutControls(ctx: android.content.Context) {
+    val density = ctx.resources.displayMetrics.density
+    val sizeState = remember {
+        mutableStateOf(com.lastwave.app.ui.overlay.NotchPlayerPrefs.scalePct(ctx).toFloat())
+    }
+    val oxState = remember {
+        mutableStateOf(com.lastwave.app.ui.overlay.NotchPlayerPrefs.offsetX(ctx) / density)
+    }
+    val oyState = remember {
+        mutableStateOf(com.lastwave.app.ui.overlay.NotchPlayerPrefs.offsetY(ctx) / density)
+    }
+    fun push() {
+        com.lastwave.app.ui.overlay.NotchPlayerPrefs.setLayout(
+            ctx,
+            (oxState.value * density).toInt(),
+            (oyState.value * density).toInt(),
+            sizeState.value.roundToInt(),
+        )
+        com.lastwave.app.ui.overlay.NotchPlayerService.applyLayout(ctx)
+    }
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+        Text(
+            "Size \u2022 ${sizeState.value.roundToInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Slider(
+            value = sizeState.value,
+            valueRange = 60f..160f,
+            onValueChange = { sizeState.value = it },
+            onValueChangeFinished = { push() },
+        )
+        Text(
+            "Left / right \u2022 ${oxState.value.roundToInt()}dp",
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Slider(
+            value = oxState.value,
+            valueRange = -160f..160f,
+            onValueChange = { oxState.value = it },
+            onValueChangeFinished = { push() },
+        )
+        Text(
+            "Up / down \u2022 ${oyState.value.roundToInt()}dp",
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Slider(
+            value = oyState.value,
+            valueRange = -20f..160f,
+            onValueChange = { oyState.value = it },
+            onValueChangeFinished = { push() },
+        )
+        TextButton(onClick = {
+            sizeState.value = 100f
+            oxState.value = 0f
+            oyState.value = 0f
+            push()
+        }) { Text("Reset notch position") }
+        Text(
+            "Long-press the notch pill and drag it anywhere, too.",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }

@@ -253,7 +253,7 @@ class SpatializationStage {
                     alt += alternationPerFrame
                     if (alt > TAU) alt %= TAU
                 }
-                val earFloor = 0.32f
+                val earFloor = 0.36f
                 val panL = earFloor + (1f - earFloor) * gL.coerceAtLeast(0f)
                 val panR = earFloor + (1f - earFloor) * gR.coerceAtLeast(0f)
 
@@ -263,7 +263,7 @@ class SpatializationStage {
                 // the flat left-right circle into something that passes
                 // behind you. Applied before the ring write so both ears
                 // share one shadow state and the overall energy stays put.
-                val shadowAlpha = (1.0 - 0.72 * behindness).toFloat()
+                val shadowAlpha = (1.0 - 0.66 * behindness).toFloat()
                 shadowState += shadowAlpha * (monoHigh - shadowState)
 
                 // Interaural time difference: the ear on the far side of the

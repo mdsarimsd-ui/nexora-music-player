@@ -42,6 +42,9 @@ object NotchPlayerPrefs {
     private const val FILE = "notch_player_prefs"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_MIGRATED_OFF = "migrated_off_v5710"
+    private const val KEY_OFFSET_X = "offset_x"
+    private const val KEY_OFFSET_Y = "offset_y"
+    private const val KEY_SCALE = "scale_pct"
 
     fun enabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -59,6 +62,26 @@ object NotchPlayerPrefs {
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_ENABLED, value).apply()
     }
+
+    /** Horizontal pill offset in px; 0 = centred on the camera hole. */
+    fun offsetX(context: Context): Int =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_OFFSET_X, 0)
+
+    /** Extra vertical offset in px from the pill's natural status-bar slot. */
+    fun offsetY(context: Context): Int =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_OFFSET_Y, 0)
+
+    /** Pill scale in percent; 100 = the natural notch-pill size. */
+    fun scalePct(context: Context): Int =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_SCALE, 100)
+
+    fun setLayout(context: Context, offsetX: Int, offsetY: Int, scalePct: Int) {
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_OFFSET_X, offsetX)
+            .putInt(KEY_OFFSET_Y, offsetY)
+            .putInt(KEY_SCALE, scalePct.coerceIn(60, 160))
+            .apply()
+    }
 }
 
 /**
@@ -75,9 +98,16 @@ object NotchPlayerPrefs {
 class NotchPlayerService : Service() {
 
     companion object {
+        private const val ACTION_APPLY = "com.lastwave.app.notch.APPLY"
         @Volatile
         var running = false
             private set
+
+        /** Re-apply the saved size / position to a running pill live. */
+        fun applyLayout(context: Context) {
+            val i = Intent(context, NotchPlayerService::class.java).setAction(ACTION_APPLY)
+            runCatching { context.startService(i) }
+        }
 
         fun maybeStart(context: Context) {
             if (running) return
@@ -100,6 +130,10 @@ class NotchPlayerService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var baseY = 0
     private var expandedY = 0
+    private var offX = 0
+    private var offY = 0
+    private var scalePct = 100
+    private var natBaseY = 0
 
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) {
@@ -136,7 +170,7 @@ class NotchPlayerService : Service() {
         if (c != null) {
             controller = c
             runCatching { c.registerCallback(callback, handler) }
-            view = NotchPillView(this, c, ::hidePill, ::shiftWindow)
+            view = NotchPillView(this, c, ::hidePill, ::shiftWindow, ::moveBy, ::savePosition)
             pushState()
         } else if (tryCount < 10) {
             handler.postDelayed({ connect(tryCount + 1) }, 500)
@@ -172,37 +206,6 @@ class NotchPlayerService : Service() {
 
     private fun addPill() {
         if (added || view == null) return
-        val density = resources.displayMetrics.density
-        // Island mode: the pill sits IN the status-bar row, centred on the
-        // punch-hole camera, exactly where the system media pill lives.
-        var topY = (4 * density).toInt()
-        var pillH = NotchPillView.collapsedHeightPx(density)
-        var cutR = (13 * density).toInt()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            runCatching {
-                val r = wm?.currentWindowMetrics?.windowInsets?.displayCutout?.boundingRects?.firstOrNull()
-                if (r != null && r.height() > 0) {
-                    pillH = maxOf(pillH, r.height() + (16 * density).toInt())
-                        .coerceAtMost((66 * density).toInt())
-                    // A touch lower and taller: the old 46dp pill sat half
-                    // inside the status-bar gesture row where HyperOS ate
-                    // every tap, and its buttons were too thin to hit.
-                    topY = (r.centerY() - pillH / 2 + (6 * density).toInt()).coerceAtLeast(0)
-                    cutR = maxOf(cutR, maxOf(r.width(), r.height()) / 2)
-                    expandedY = r.bottom + (8 * density).toInt()
-                }
-            }
-        }
-        if (expandedY == 0) expandedY = topY + pillH + (6 * density).toInt()
-        baseY = topY
-        view?.setCollapsedSize(
-            minOf(
-                (150 * density).toInt() + 2 * (cutR + (6 * density).toInt()),
-                (resources.displayMetrics.widthPixels * 0.62f).toInt(),
-            ),
-            pillH,
-        )
-        view?.setCutoutRadiusPx(cutR)
         if (params == null) {
             params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -217,11 +220,85 @@ class NotchPlayerService : Service() {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             }
         }
-        params?.y = topY
-        runCatching {
-            wm?.addView(view, params)
-            added = true
+        layoutPill()
+    }
+
+    /**
+     * Size and place the pill: island mode (the pill sits IN the status-bar
+     * row, centred on the punch-hole camera) plus the user's own size and
+     * position, tuned in Settings or by long-press dragging the pill.
+     */
+    private fun layoutPill() {
+        val v = view ?: return
+        val density = resources.displayMetrics.density
+        var topY = (4 * density).toInt()
+        var pillH = NotchPillView.collapsedHeightPx(density)
+        var cutR = (13 * density).toInt()
+        var expY = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                val r = wm?.currentWindowMetrics?.windowInsets?.displayCutout?.boundingRects?.firstOrNull()
+                if (r != null && r.height() > 0) {
+                    pillH = maxOf(pillH, r.height() + (16 * density).toInt())
+                        .coerceAtMost((66 * density).toInt())
+                    // A touch lower and taller: the old 46dp pill sat half
+                    // inside the status-bar gesture row where HyperOS ate
+                    // every tap, and its buttons were too thin to hit.
+                    topY = (r.centerY() - pillH / 2 + (6 * density).toInt()).coerceAtLeast(0)
+                    cutR = maxOf(cutR, maxOf(r.width(), r.height()) / 2)
+                    expY = r.bottom + (8 * density).toInt()
+                }
+            }
         }
+        if (expY == 0) expY = topY + pillH + (6 * density).toInt()
+
+        // User-tuned size and placement (Settings sliders or drag).
+        scalePct = NotchPlayerPrefs.scalePct(this).coerceIn(60, 160)
+        offX = NotchPlayerPrefs.offsetX(this)
+        offY = NotchPlayerPrefs.offsetY(this)
+        val scale = scalePct / 100f
+        val pillHs = (pillH * scale).toInt().coerceAtLeast((40 * density).toInt())
+        // A taller capsule stays centred on the camera hole; the cutout
+        // radius itself never scales, the hole is a physical lens.
+        val centre = (pillH - pillHs) / 2
+        natBaseY = (topY + centre).coerceAtLeast(0)
+        baseY = (natBaseY + offY).coerceAtLeast(0)
+        expandedY = expY - centre + offY
+        val widthS = (minOf(
+            (150 * density).toInt() + 2 * (cutR + (6 * density).toInt()),
+            (resources.displayMetrics.widthPixels * 0.62f).toInt(),
+        ) * scale).toInt().coerceAtLeast((120 * density).toInt())
+        v.setCollapsedSize(widthS, pillHs)
+        v.setCutoutRadiusPx(cutR)
+        v.setScale(scale)
+        val p = params ?: return
+        p.y = baseY
+        p.x = offX
+        if (added) {
+            runCatching { wm?.updateViewLayout(v, p) }
+        } else {
+            runCatching {
+                wm?.addView(v, p)
+                added = true
+            }
+        }
+    }
+
+    /** Live drag from the pill: nudge the window, remembered on release. */
+    private fun moveBy(dx: Int, dy: Int) {
+        if (dx == 0 && dy == 0) return
+        val scrW = resources.displayMetrics.widthPixels
+        offX = (offX + dx).coerceIn(-scrW / 2, scrW / 2)
+        offY = (offY + dy).coerceAtLeast(-natBaseY)
+        val p = params ?: return
+        p.x = offX
+        p.y = (baseY + dy).coerceAtLeast(0)
+        runCatching { wm?.updateViewLayout(view, p) }
+    }
+
+    /** Persist the pill's dragged position; size stays from Settings. */
+    private fun savePosition() {
+        NotchPlayerPrefs.setLayout(this, offX, offY, scalePct)
     }
 
     private fun removePill() {
@@ -238,6 +315,7 @@ class NotchPlayerService : Service() {
     private fun shiftWindow(down: Boolean) {
         val p = params ?: return
         p.y = if (down) expandedY else baseY
+        p.x = offX
         runCatching { wm?.updateViewLayout(view, p) }
     }
 
@@ -250,7 +328,12 @@ class NotchPlayerService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_APPLY && added) {
+            handler.post { layoutPill() }
+        }
+        return START_NOT_STICKY
+    }
 
     override fun onDestroy() {
         running = false
@@ -271,6 +354,8 @@ private class NotchPillView(
     private var ctrl: MediaController?,
     private val onHide: () -> Unit,
     private val onShift: (down: Boolean) -> Unit,
+    private val onMoveBy: (dx: Int, dy: Int) -> Unit,
+    private val onMoveEnd: () -> Unit,
 ) : View(context) {
 
     var sessionHidden = false
@@ -481,6 +566,16 @@ private class NotchPillView(
         requestLayout()
     }
 
+    /** User-tuned pill scale; text sizes follow it, the camera hole does not. */
+    var scaleF = 1f
+        private set
+
+    fun setScale(s: Float) {
+        scaleF = s.coerceIn(0.6f, 1.6f)
+        requestLayout()
+        invalidate()
+    }
+
     /** Quick white halo pulse when the track changes. */
     private fun pulse() {
         pulseAnim?.cancel()
@@ -572,20 +667,18 @@ private class NotchPillView(
 
     private fun drawCollapsed(canvas: Canvas, w: Float, h: Float) {
         // Reference capsule: album art and title / artist sit left of the
-        // camera, an animated waveform sits right of it. Tap anywhere to
-        // expand into the card below.
+        // camera, a pause / play button sits at the right cap. Tap the rest
+        // to expand into the card below; long-press and drag to move it.
         val pad = 7f * density
         val artS = h - 2 * pad
         drawArtRect(canvas, pad, pad, artS)
         val camGap = camR + 6f * density
         val tx = w / 2f + camGap
-        val waveW = 26f * density
-        val waveX = w - pad - waveW
-        val textRight = waveX - 8f * density
+        val textRight = w - pad - 30f * density
         val avail = textRight - tx
         if (avail > 24f * density) {
-            titlePaint.textSize = 13f * density
-            artistPaint.textSize = 10f * density
+            titlePaint.textSize = 13f * density * scaleF
+            artistPaint.textSize = 10f * density * scaleF
             val tY1 = h / 2f - 1.5f * density
             val tY2 = h / 2f + 13f * density
             val full = title.ifBlank { "Nexora" }
@@ -606,7 +699,7 @@ private class NotchPillView(
             canvas.drawText(a, tx, tY2, artistPaint)
             canvas.restore()
         }
-        drawWave(canvas, waveX, waveW, h)
+        drawPlayPause(canvas, w - pad - 15f * density, h / 2f)
         if (durationMs > 0) {
             track.color = 0x26FFFFFF
             val inset = 12f * density
@@ -614,6 +707,41 @@ private class NotchPillView(
             val frac = (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             progress.color = 0xE6C6F53F.toInt()
             canvas.drawRoundRect(RectF(inset, h - 2.4f * density, inset + (w - 2 * inset) * frac, h - 0.8f * density), 1f, 1f, progress)
+        }
+    }
+
+    /**
+     * Pause / play control at the right cap of the collapsed pill: two bars
+     * while playing, a triangle while paused, on a faint glass disc so the
+     * tap target reads at a glance.
+     */
+    private val ppPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    private fun drawPlayPause(canvas: Canvas, cx: Float, cy: Float) {
+        val r = 12f * density * scaleF
+        ppPaint.color = 0x1FFFFFFF
+        canvas.drawCircle(cx, cy, r, ppPaint)
+        val bh = 8.4f * density * scaleF
+        if (playing) {
+            val bw = 3f * density * scaleF
+            val gap = 2.6f * density * scaleF
+            ppPaint.color = 0xF2FFFFFF.toInt()
+            canvas.drawRoundRect(
+                RectF(cx - bw - gap / 2f, cy - bh / 2f, cx - gap / 2f, cy + bh / 2f),
+                1.4f * density, 1.4f * density, ppPaint,
+            )
+            canvas.drawRoundRect(
+                RectF(cx + gap / 2f, cy - bh / 2f, cx + bw + gap / 2f, cy + bh / 2f),
+                1.4f * density, 1.4f * density, ppPaint,
+            )
+        } else {
+            ppPaint.color = 0xCCFFFFFF.toInt()
+            val tri = android.graphics.Path()
+            tri.moveTo(cx - 3.2f * density, cy - 5.2f * density)
+            tri.lineTo(cx + 4.9f * density, cy)
+            tri.lineTo(cx - 3.2f * density, cy + 5.2f * density)
+            tri.close()
+            canvas.drawPath(tri, ppPaint)
         }
     }
 
@@ -814,12 +942,38 @@ private class NotchPillView(
         }
     }
 
+    // Long-press then drag moves the pill anywhere on screen, Notch-Action
+    // style; the service remembers the spot. A plain tap still expands.
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var lastRawX = 0f
+    private var lastRawY = 0f
+    private var dragging = false
+    private var longFired = false
+    private val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop * 2
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private val longPressRun = Runnable {
+        longFired = true
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        animatePress(1f)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val c = ctrl ?: return false
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> animatePress(1f)
+            MotionEvent.ACTION_DOWN -> {
+                animatePress(1f)
+                downRawX = event.rawX
+                downRawY = event.rawY
+                lastRawX = event.rawX
+                lastRawY = event.rawY
+                dragging = false
+                longFired = false
+                if (!expanded) uiHandler.postDelayed(longPressRun, 420L)
+            }
             MotionEvent.ACTION_UP -> {
                 animatePress(0f)
+                uiHandler.removeCallbacks(longPressRun)
                 if (expanded) {
                     val w = width.toFloat()
                     val h = height.toFloat()
@@ -845,17 +999,41 @@ private class NotchPillView(
                         dist(x, y, w / 2f + 64f * d, h - 40f * d) < 24f * d -> c.transportControls.skipToNext()
                         x < pad + artS + 10f * d && y < pad + artS + 10f * d -> openApp()
                     }
+                } else if (dragging) {
+                    dragging = false
+                    onMoveEnd()
+                } else if (longFired) {
+                    longFired = false
+                } else if (event.x > width - 30f * density) {
+                    // Pause / play at the right cap of the pill.
+                    if (playing) c.transportControls.pause() else c.transportControls.play()
                 } else {
                     setExpanded(true)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (!expanded && event.y < -44 * density) {
+                if (expanded) return true
+                if (longFired) {
+                    dragging = true
+                    onMoveBy((event.rawX - lastRawX).toInt(), (event.rawY - lastRawY).toInt())
+                    lastRawX = event.rawX
+                    lastRawY = event.rawY
+                } else if (event.y < -44 * density) {
+                    uiHandler.removeCallbacks(longPressRun)
                     dismiss(onGone = onHide)
                     return true
+                } else if (abs(event.rawX - downRawX) > touchSlop ||
+                    abs(event.rawY - downRawY) > touchSlop
+                ) {
+                    uiHandler.removeCallbacks(longPressRun)
                 }
             }
-            MotionEvent.ACTION_CANCEL -> animatePress(0f)
+            MotionEvent.ACTION_CANCEL -> {
+                uiHandler.removeCallbacks(longPressRun)
+                dragging = false
+                longFired = false
+                animatePress(0f)
+            }
         }
         return true
     }

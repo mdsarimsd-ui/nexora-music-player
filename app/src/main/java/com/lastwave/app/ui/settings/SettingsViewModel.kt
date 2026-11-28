@@ -1052,7 +1052,7 @@ class SettingsViewModel @Inject constructor(
             val backup = try {
                 kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
                     .decodeFromString(com.lastwave.app.data.backup.BackupFile.serializer(), content)
-                    .takeIf { it.type == "lastwave-backup" }
+                    .takeIf { it.type == "nexora-backup" || it.type == "lastwave-backup" }
             } catch (e: Exception) { null }
             val mirrorCount = playlistRepository.publicMirrorPlaylistCount(content)
             if (backup == null && mirrorCount == null) {

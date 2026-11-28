@@ -1,0 +1,1 @@
+Backup files now save as nexora-backup (.json) instead of lastwave-backup; older lastwave backup files still restore fine. No other changes.

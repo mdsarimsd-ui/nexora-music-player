@@ -2233,7 +2233,7 @@ fun SettingsScreen(
                                 title = stringResource(R.string.settings_backup),
                                 subtitle = stringResource(R.string.settings_backup_sub),
                                 onClick = {
-                                    runCatching { backupLauncher.launch("lastwave-backup-${System.currentTimeMillis()}.json") }
+                                    runCatching { backupLauncher.launch("nexora-backup-${System.currentTimeMillis()}.json") }
                                         .onFailure { viewModel.showToast(context.getString(R.string.toast_no_picker)) }
                                 },
                                 position = position,

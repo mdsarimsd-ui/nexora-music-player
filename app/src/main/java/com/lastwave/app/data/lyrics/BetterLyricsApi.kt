@@ -149,7 +149,7 @@ class BetterLyricsApi @Inject constructor(
         }
         val request = Request.Builder()
             .url(builder.build())
-            .header("User-Agent", "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)")
+            .header("User-Agent", "Nexora-Android/1.0 (https://github.com/mdsarimsd-ui/nexora-music-player)")
             .header("Accept", "application/json")
             .get()
             .build()

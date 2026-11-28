@@ -201,7 +201,7 @@ class LyricsPlusLyricsApi @Inject constructor(
     }
 
     companion object {
-        private const val USER_AGENT = "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)"
+        private const val USER_AGENT = "Nexora-Android/1.0 (https://github.com/mdsarimsd-ui/nexora-music-player)"
 
         private val MIRRORS = listOf(
             "https://lyricsplus.prjktla.my.id",

@@ -1556,23 +1556,6 @@ object SettingsSearchIndex {
                     type = EntryType.ACTION,
                 )
             )
-            add(
-                SettingsEntry(
-                    id = "about.desktop_app",
-                    title = "Download Desktop App",
-                    subtitle = "Get desktop builds at github.com/mdsarimsd-ui/nexora-music-player/releases",
-                    keywords = listOf(
-                        "desktop", "pc", "windows", "mac", "linux", "electron", "github", "clash-projects",
-                        "download"
-                    ),
-                    icon = Icons.Filled.Download,
-                    iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
-                    iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
-                    parentTab = SettingsTab.ABOUT,
-                    section = "About & Community",
-                    type = EntryType.ACTION,
-                )
-            )
         }
     }
 }

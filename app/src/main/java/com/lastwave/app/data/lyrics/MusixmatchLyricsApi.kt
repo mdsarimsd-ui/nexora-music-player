@@ -233,7 +233,7 @@ class MusixmatchLyricsApi @Inject constructor(
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "Nexora-Android/1.0 (https://github.com/clash-projects/lastwave)")
+                .header("User-Agent", "Nexora-Android/1.0 (https://github.com/mdsarimsd-ui/nexora-music-player)")
                 .header("Accept", "application/json")
                 .get()
                 .build()

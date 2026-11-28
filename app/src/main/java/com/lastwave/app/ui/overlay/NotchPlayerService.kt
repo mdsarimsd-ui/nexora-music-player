@@ -183,7 +183,7 @@ class NotchPlayerService : Service() {
                 val r = wm?.currentWindowMetrics?.windowInsets?.displayCutout?.boundingRects?.firstOrNull()
                 if (r != null && r.height() > 0) {
                     pillH = maxOf(pillH, r.height() + (16 * density).toInt())
-                        .coerceAtMost((60 * density).toInt())
+                        .coerceAtMost((66 * density).toInt())
                     // A touch lower and taller: the old 46dp pill sat half
                     // inside the status-bar gesture row where HyperOS ate
                     // every tap, and its buttons were too thin to hit.
@@ -197,8 +197,8 @@ class NotchPlayerService : Service() {
         baseY = topY
         view?.setCollapsedSize(
             minOf(
-                (140 * density).toInt() + 2 * (cutR + (7 * density).toInt()),
-                (resources.displayMetrics.widthPixels * 0.55f).toInt(),
+                (150 * density).toInt() + 2 * (cutR + (6 * density).toInt()),
+                (resources.displayMetrics.widthPixels * 0.62f).toInt(),
             ),
             pillH,
         )
@@ -285,7 +285,7 @@ private class NotchPillView(
     private var art: Bitmap? = null
 
     companion object {
-        fun collapsedHeightPx(density: Float): Int = (38 * density).toInt()
+        fun collapsedHeightPx(density: Float): Int = (54 * density).toInt()
     }
 
     private val density = resources.displayMetrics.density
@@ -293,10 +293,10 @@ private class NotchPillView(
         (resources.displayMetrics.widthPixels * 0.55f).toInt(),
         (240 * density).toInt(),
     )
-    private var collapsedH = (38 * density).toInt()
+    private var collapsedH = (54 * density).toInt()
     // Camera-hole radius in px (service-provided); content never crosses it.
     private var camR = 13f * density
-    private val expandedH = (162 * density).toInt()
+    private val expandedH = (210 * density).toInt()
     private val expandedW: Int
         get() = min(
             resources.displayMetrics.widthPixels - (16 * density).toInt(),
@@ -321,26 +321,10 @@ private class NotchPillView(
 
     private var expandAnim: ValueAnimator? = null
 
-    // The app's launcher icon, shown in the collapsed island the way the
-    // system media pill shows the playing app's icon.
-    private val appIconBmp: Bitmap? = runCatching {
-        val d = context.applicationInfo.loadIcon(context.packageManager)
-        val side = (48 * resources.displayMetrics.density).toInt().coerceAtLeast(48)
-        val bmp = if (d is android.graphics.drawable.BitmapDrawable) {
-            d.bitmap
-        } else {
-            val w0 = maxOf(d.intrinsicWidth, 1)
-            val h0 = maxOf(d.intrinsicHeight, 1)
-            Bitmap.createBitmap(w0, h0, Bitmap.Config.ARGB_8888).also { b ->
-                val c = android.graphics.Canvas(b)
-                d.setBounds(0, 0, w0, h0)
-                d.draw(c)
-            }
-        }
-        Bitmap.createScaledBitmap(bmp, side, side, true)
-    }.getOrNull()
-    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private var iconSize = 0
+    private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+    }
     private var pulseT = 0f
     private var pulseAnim: ValueAnimator? = null
     private var pressAnim: ValueAnimator? = null
@@ -493,15 +477,6 @@ private class NotchPillView(
     fun setCollapsedSize(wPx: Int, hPx: Int) {
         collapsedW = wPx.coerceAtLeast((120 * density).toInt())
         collapsedH = hPx
-        val s = (hPx - (16 * density).toInt()).coerceAtLeast(8)
-        if (appIconBmp != null && iconSize != s) {
-            iconSize = s
-            iconPaint.shader = BitmapShader(
-                Bitmap.createScaledBitmap(appIconBmp, s, s, true),
-                Shader.TileMode.CLAMP,
-                Shader.TileMode.CLAMP,
-            )
-        }
         requestLayout()
     }
 
@@ -537,7 +512,7 @@ private class NotchPillView(
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
-        val r = 26f * density
+        val r = (26f + 8f * expandT) * density
         // Collapsed island: near-black like the system media pill, so it
         // reads as one solid capsule wrapping the camera. Expanded it keeps
         // the liquid-glass frosted card with a moving sheen and hairline rim.
@@ -595,56 +570,42 @@ private class NotchPillView(
     }
 
     private fun drawCollapsed(canvas: Canvas, w: Float, h: Float) {
-        // HyperOS island layout: app icon left of the camera, the track
-        // title right of it, play / pause at the right cap, a hairline
-        // progress along the bottom edge.
-        val pad = 8f * density
-        val iconS = h - 2 * pad
-        drawAppIcon(canvas, pad, pad, iconS)
-        val bR = (h - 16f * density) / 2f
-        val bx = w - pad - bR
-        val by = h / 2f
-        val camGap = camR + 7f * density
+        // Reference capsule: album art and title / artist sit left of the
+        // camera, an animated waveform sits right of it. Tap anywhere to
+        // expand into the card below.
+        val pad = 7f * density
+        val artS = h - 2 * pad
+        drawArtRect(canvas, pad, pad, artS)
+        val camGap = camR + 6f * density
         val tx = w / 2f + camGap
-        val textRight = bx - 10f * density
+        val waveW = 26f * density
+        val waveX = w - pad - waveW
+        val textRight = waveX - 8f * density
         val avail = textRight - tx
-        if (avail > 28f * density) {
+        if (avail > 24f * density) {
             titlePaint.textSize = 13f * density
-            val tY = h / 2f + 4.5f * density
+            artistPaint.textSize = 10f * density
+            val tY1 = h / 2f - 1.5f * density
+            val tY2 = h / 2f + 13f * density
             val full = title.ifBlank { "Nexora" }
-            val tw = titlePaint.measureText(full)
+            val sub = artist.ifBlank { "Now playing" }
             canvas.save()
             canvas.clipRect(tx, 0f, textRight, h)
+            val tw = titlePaint.measureText(full)
             if (tw > avail && playing) {
-                // Long titles crawl like a marquee while playing.
-                val wrap = tw + 26f * density
+                val wrap = tw + 24f * density
                 val off = if (wrap > 0f) marqueeX % wrap else 0f
-                canvas.drawText(full, tx - off, tY, titlePaint)
-                canvas.drawText(full, tx - off + wrap, tY, titlePaint)
+                canvas.drawText(full, tx - off, tY1, titlePaint)
+                canvas.drawText(full, tx - off + wrap, tY1, titlePaint)
             } else {
                 val t = TextUtils.ellipsize(full, titlePaint, avail, TextUtils.TruncateAt.END).toString()
-                canvas.drawText(t, tx, tY, titlePaint)
+                canvas.drawText(t, tx, tY1, titlePaint)
             }
+            val a = TextUtils.ellipsize(sub, artistPaint, avail, TextUtils.TruncateAt.END).toString()
+            canvas.drawText(a, tx, tY2, artistPaint)
             canvas.restore()
         }
-        // Play / pause disc with a gentle press swell.
-        val pr = bR * (1f + 0.07f * pressT)
-        glyph.color = 0x2EFFFFFF
-        canvas.drawCircle(bx, by, pr, glyph)
-        glyph.color = Color.WHITE
-        if (playing) {
-            val bw = 2.6f * density
-            val bh = 8.5f * density
-            canvas.drawRoundRect(RectF(bx - 3.4f * density, by - bh / 2, bx - 0.8f * density, by + bh / 2), 1.2f * density, 1.2f * density, glyph)
-            canvas.drawRoundRect(RectF(bx + 0.8f * density, by - bh / 2, bx + 3.4f * density, by + bh / 2), 1.2f * density, 1.2f * density, glyph)
-        } else {
-            val path = android.graphics.Path()
-            path.moveTo(bx - 3f * density, by - 5.2f * density)
-            path.lineTo(bx + 5f * density, by)
-            path.lineTo(bx - 3f * density, by + 5.2f * density)
-            path.close()
-            canvas.drawPath(path, glyph)
-        }
+        drawWave(canvas, waveX, waveW, h)
         if (durationMs > 0) {
             track.color = 0x26FFFFFF
             val inset = 12f * density
@@ -655,11 +616,21 @@ private class NotchPillView(
         }
     }
 
-    /** Screen-x of the play / pause disc on the right cap, for taps. */
-    private fun collapsedPlayX(w: Float): Float {
-        val pad = 8f * density
-        val bR = (collapsedH - 16f * density) / 2f
-        return w - pad - bR
+    /** Five-bar waveform right of the camera; the bars dance while playing. */
+    private fun drawWave(canvas: Canvas, x: Float, w: Float, h: Float) {
+        val n = 5
+        val bw = 2.8f * density
+        val gap = ((w - n * bw) / (n - 1)).coerceAtLeast(1.5f * density)
+        val midY = h / 2f
+        for (i in 0 until n) {
+            val t = if (playing) 0.32f + 0.68f * abs(sin(phase * 2.2f + i * 0.85f)) else 0.26f
+            val bh2 = h * 0.34f * t + 2f * density
+            wavePaint.alpha = if (playing) 0xFF else 0x8C
+            canvas.drawRoundRect(
+                RectF(x + i * (bw + gap), midY - bh2 / 2f, x + i * (bw + gap) + bw, midY + bh2 / 2f),
+                bw / 2f, bw / 2f, wavePaint,
+            )
+        }
     }
 
     private fun drawArt(canvas: Canvas, cx: Float, cy: Float, r: Float) {
@@ -724,25 +695,34 @@ private class NotchPillView(
     }
 
     private fun drawExpanded(canvas: Canvas, w: Float, h: Float) {
+        // Floating glass card, like the reference: art and titles up top,
+        // seek bar with times, transport row centred below.
         val pad = 18f * density
-        val artR = 28f * density
-        drawArt(canvas, pad + artR, 20f * density + artR, artR)
-        val cxc = w - 22f * density
-        val cyc = 26f * density
-        val arm = 5f * density
+        val artS = 58f * density
+        drawArtRect(canvas, pad, pad + 2f * density, artS)
+        val tx = pad + artS + 14f * density
+        val availT = w - tx - 36f * density
+        if (availT > 0) {
+            titlePaint.textSize = 16f * density
+            canvas.drawText(
+                TextUtils.ellipsize(title.ifBlank { "Nexora" }, titlePaint, availT, TextUtils.TruncateAt.END).toString(),
+                tx, pad + 24f * density, titlePaint,
+            )
+            artistPaint.textSize = 11.5f * density
+            canvas.drawText(
+                TextUtils.ellipsize(artist.ifBlank { "Now playing" }, artistPaint, availT, TextUtils.TruncateAt.END).toString(),
+                tx, pad + 43f * density, artistPaint,
+            )
+        }
+        val cxc = w - 24f * density
+        val cyc = pad + 12f * density
+        val arm = 6f * density
+        closePaint.strokeWidth = 2.2f * density
         canvas.drawLine(cxc - arm, cyc - arm, cxc + arm, cyc + arm, closePaint)
         canvas.drawLine(cxc - arm, cyc + arm, cxc + arm, cyc - arm, closePaint)
-        val tx = pad + artR * 2 + 12f * density
-        val avail = w - tx - 30f * density
-        if (avail > 0) {
-            val t = TextUtils.ellipsize(title, titlePaint, avail, TextUtils.TruncateAt.END).toString()
-            canvas.drawText(t, tx, 36f * density, titlePaint)
-            val a = TextUtils.ellipsize(artist, artistPaint, avail, TextUtils.TruncateAt.END).toString()
-            canvas.drawText(a, tx, 56f * density, artistPaint)
-        }
-        val sy = 84f * density
-        val sx0 = 24f * density
-        val sx1 = w - 24f * density
+        val sy = pad + artS + 22f * density
+        val sx0 = pad + 6f * density
+        val sx1 = w - pad - 6f * density
         track.color = 0x24FFFFFF
         canvas.drawRoundRect(RectF(sx0, sy, sx1, sy + 4f * density), 2f * density, 2f * density, track)
         val frac = if (durationMs > 0) (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
@@ -755,29 +735,29 @@ private class NotchPillView(
         canvas.drawCircle(sx0 + (sx1 - sx0) * frac, sy + 2f * density, 4.5f * density, thumb)
         val cur = fmt(currentPosMs())
         val tot = fmt(durationMs)
-        canvas.drawText(cur, sx0, sy + 18f * density, timePaint)
-        canvas.drawText(tot, sx1 - timePaint.measureText(tot), sy + 18f * density, timePaint)
-        val by = h - 34f * density
+        canvas.drawText(cur, sx0, sy + 20f * density, timePaint)
+        canvas.drawText(tot, sx1 - timePaint.measureText(tot), sy + 20f * density, timePaint)
+        val by = h - 40f * density
         val cxp = w / 2f
-        drawSkip(canvas, cxp - w * 0.22f, by, forward = false)
-        val pr = 21f * density
-        glyph.color = 0x1FFFFFFF
+        drawSkip(canvas, cxp - 64f * density, by, forward = false)
+        val pr = 24f * density * (1f + 0.05f * pressT)
+        glyph.color = 0x26FFFFFF
         canvas.drawCircle(cxp, by, pr, glyph)
         glyph.color = Color.WHITE
         if (playing) {
-            val bw = 3.4f * density
-            val bh2 = 13f * density
-            canvas.drawRoundRect(RectF(cxp - 4.5f * density, by - bh2 / 2, cxp - 1.1f * density, by + bh2 / 2), 1.6f * density, 1.6f * density, glyph)
-            canvas.drawRoundRect(RectF(cxp + 1.1f * density, by - bh2 / 2, cxp + 4.5f * density, by + bh2 / 2), 1.6f * density, 1.6f * density, glyph)
+            val bw = 4f * density
+            val bh2 = 16f * density
+            canvas.drawRoundRect(RectF(cxp - 5.4f * density, by - bh2 / 2, cxp - 1.4f * density, by + bh2 / 2), 1.8f * density, 1.8f * density, glyph)
+            canvas.drawRoundRect(RectF(cxp + 1.4f * density, by - bh2 / 2, cxp + 5.4f * density, by + bh2 / 2), 1.8f * density, 1.8f * density, glyph)
         } else {
             val path = android.graphics.Path()
-            path.moveTo(cxp - 4.5f * density, by - 8f * density)
-            path.lineTo(cxp + 7.5f * density, by)
-            path.lineTo(cxp - 4.5f * density, by + 8f * density)
+            path.moveTo(cxp - 5.5f * density, by - 10f * density)
+            path.lineTo(cxp + 9f * density, by)
+            path.lineTo(cxp - 5.5f * density, by + 10f * density)
             path.close()
             canvas.drawPath(path, glyph)
         }
-        drawSkip(canvas, cxp + w * 0.22f, by, forward = true)
+        drawSkip(canvas, cxp + 64f * density, by, forward = true)
     }
 
     private fun drawSkip(canvas: Canvas, cx: Float, cy: Float, forward: Boolean) {
@@ -831,27 +811,27 @@ private class NotchPillView(
                     val x = event.x
                     val y = event.y
                     val d = density
-                    if (abs(x - (w - 22 * d)) < 16 * d && abs(y - 26 * d) < 16 * d) {
-                        setExpanded(false)
-                    } else if (y in (78 * d)..(94 * d) && durationMs > 0) {
-                        val frac = ((x - 24 * d) / (w - 48 * d)).coerceIn(0f, 1f)
-                        c.transportControls.seekTo((frac * durationMs).toLong())
-                    } else if (dist(x, y, w / 2f, h - 34 * d) < 26 * d) {
-                        if (playing) c.transportControls.pause() else c.transportControls.play()
-                    } else if (dist(x, y, w / 2f - w * 0.22f, h - 34 * d) < 22 * d) {
-                        c.transportControls.skipToPrevious()
-                    } else if (dist(x, y, w / 2f + w * 0.22f, h - 34 * d) < 22 * d) {
-                        c.transportControls.skipToNext()
-                    } else if (dist(x, y, 46 * d, 48 * d) < 34 * d) {
-                        openApp()
+                    val pad = 18f * d
+                    val artS = 58f * d
+                    val seekTop = pad + artS + 16f * d
+                    val seekBottom = pad + artS + 34f * d
+                    when {
+                        abs(x - (w - 24f * d)) < 16f * d && abs(y - (pad + 12f * d)) < 16f * d -> setExpanded(false)
+                        y in seekTop..seekBottom && durationMs > 0 -> {
+                            val sx0 = pad + 6f * d
+                            val sx1 = w - pad - 6f * d
+                            val frac = ((x - sx0) / (sx1 - sx0)).coerceIn(0f, 1f)
+                            c.transportControls.seekTo((frac * durationMs).toLong())
+                        }
+                        dist(x, y, w / 2f, h - 40f * d) < 30f * d -> {
+                            if (playing) c.transportControls.pause() else c.transportControls.play()
+                        }
+                        dist(x, y, w / 2f - 64f * d, h - 40f * d) < 24f * d -> c.transportControls.skipToPrevious()
+                        dist(x, y, w / 2f + 64f * d, h - 40f * d) < 24f * d -> c.transportControls.skipToNext()
+                        x < pad + artS + 10f * d && y < pad + artS + 10f * d -> openApp()
                     }
                 } else {
-                    val pw = width.toFloat()
-                    if (abs(event.x - collapsedPlayX(pw)) < 26 * density && abs(event.y - collapsedH / 2f) < 26 * density) {
-                        if (playing) c.transportControls.pause() else c.transportControls.play()
-                    } else {
-                        setExpanded(true)
-                    }
+                    setExpanded(true)
                 }
             }
             MotionEvent.ACTION_MOVE -> {

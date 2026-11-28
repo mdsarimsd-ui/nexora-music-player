@@ -52,7 +52,7 @@ inline double eqBandQFor(double gainDb) noexcept {
 constexpr float kOutputCeiling = 0.944060876F;
 // -1.5 dBFS soft-knee threshold: perfectly linear below this.
 constexpr float kSoftKneeThreshold = 0.841395141F;
-constexpr float kEqualizerPreLimiterBoostDb = 1.0F;
+constexpr float kEqualizerPreLimiterBoostDb = 1.5F;
 constexpr float kClarityMakeupGain = 1.04F;
 constexpr float kClarityStereoWidth = 1.22F;
 constexpr float kAirExciterAmount = 0.18F;
@@ -163,8 +163,11 @@ void DspProcessor::configure(double sampleRate) noexcept {
     airDetail_ = Biquad::highShelf(
         sampleRate_, 10500.0, 0.85,
         kClarityAirGainDb + static_cast<double>(currentClarityTrimsDb_[5]));
-    // 7. Mono-Bass filter: 130 Hz highpass for Side channel (locks low-end to center, zero blur)
+    // 7. Mono-Bass fold: two cascaded 130 Hz highpasses on the Side channel
+    // (Linkwitz-Riley style, 24 dB/oct) so the low end locks to center with a
+    // much cleaner crossover than the old single 12 dB/oct stage.
     monoBassFilter_ = Biquad::highPass(sampleRate_, 130.0, 0.7071067811865476);
+    monoBassFold2_ = Biquad::highPass(sampleRate_, 130.0, 0.7071067811865476);
     // 8. Harmonic air exciter: 6000 Hz highpass to isolate highs for tape-style harmonic sheen
     airExciterFilter_ = Biquad::highPass(sampleRate_, 6000.0, 0.7071067811865476);
     crossfeed_.configure(sampleRate_, 700.0, 4.5);
@@ -233,6 +236,7 @@ void DspProcessor::reset() noexcept {
     presenceDetail_.clear();
     airDetail_.clear();
     monoBassFilter_.clear();
+    monoBassFold2_.clear();
     airExciterFilter_.clear();
     crossfeed_.clear();
     for (auto& band : equalizerBands_) band.clear();
@@ -633,8 +637,9 @@ void DspProcessor::process(
             if (channelCount == 2) {
                 const float mid = (wetLeft + wetRight) * 0.5F;
                 const float rawSide = (wetLeft - wetRight) * 0.5F;
-                // Mono-Bass (Anti-Blur): pass side through 130 Hz highpass so bass stays centered mono
-                const float sideHigh = monoBassFilter_.tick(rawSide, 0) * clarityTrimLinear_[6];
+                // Mono-Bass (Anti-Blur): 4th-order 130 Hz fold keeps bass
+                // centered and tight, with no mid-bass phase smear.
+                const float sideHigh = monoBassFold2_.tick(monoBassFilter_.tick(rawSide, 0), 0) * clarityTrimLinear_[6];
                 const float wideSide = sideHigh * kClarityStereoWidth;
                 wetLeft = mid + wideSide;
                 wetRight = mid - wideSide;
@@ -695,7 +700,7 @@ void DspProcessor::process(
     }
     for (auto& band : equalizerBands_) band.settle();
     for (Biquad* filter : {&subBassHighPass_, &bassFoundation_, &lowMidSeparation_, &boxinessControl_,
-             &presenceDetail_, &airDetail_, &monoBassFilter_, &airExciterFilter_}) {
+             &presenceDetail_, &airDetail_, &monoBassFilter_, &monoBassFold2_, &airExciterFilter_}) {
         filter->settle();
     }
 

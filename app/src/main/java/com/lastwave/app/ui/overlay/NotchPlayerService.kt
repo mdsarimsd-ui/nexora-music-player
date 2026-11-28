@@ -45,6 +45,7 @@ object NotchPlayerPrefs {
     private const val KEY_OFFSET_X = "offset_x"
     private const val KEY_OFFSET_Y = "offset_y"
     private const val KEY_SCALE = "scale_pct"
+    private const val KEY_ANIM_STYLE = "anim_style"
 
     fun enabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -81,6 +82,18 @@ object NotchPlayerPrefs {
             .putInt(KEY_OFFSET_Y, offsetY)
             .putInt(KEY_SCALE, scalePct.coerceIn(60, 160))
             .apply()
+    }
+
+    /**
+     * Collapsed-pill animation style:
+     * 0 classic bars, 1 beat bars, 2 progress ring, 3 liquid morph expand.
+     */
+    fun animStyle(context: Context): Int =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_ANIM_STYLE, 0)
+
+    fun setAnimStyle(context: Context, style: Int) {
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_ANIM_STYLE, style.coerceIn(0, 3)).apply()
     }
 }
 
@@ -171,6 +184,7 @@ class NotchPlayerService : Service() {
             controller = c
             runCatching { c.registerCallback(callback, handler) }
             view = NotchPillView(this, c, ::hidePill, ::shiftWindow, ::moveBy, ::savePosition)
+            view?.setAnimStyle(NotchPlayerPrefs.animStyle(this))
             pushState()
         } else if (tryCount < 10) {
             handler.postDelayed({ connect(tryCount + 1) }, 500)
@@ -330,7 +344,10 @@ class NotchPlayerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_APPLY && added) {
-            handler.post { layoutPill() }
+            handler.post {
+                view?.setAnimStyle(NotchPlayerPrefs.animStyle(this))
+                layoutPill()
+            }
         }
         return START_NOT_STICKY
     }
@@ -391,6 +408,10 @@ private class NotchPillView(
     private var expandT = 0f
     private var expanded = false
 
+    /** Collapsed-pill animation: 0 classic, 1 beat bars, 2 progress ring, 3 liquid morph. */
+    private var animStyle = 0
+    private var morphing = false
+
     private var phase = 0f
     private val animator = ValueAnimator.ofFloat(0f, (2.0 * Math.PI).toFloat()).apply {
         duration = 950
@@ -409,6 +430,10 @@ private class NotchPillView(
     private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Color.WHITE
+    }
+    private val progRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0xE6C6F53F.toInt()
     }
     private var pulseT = 0f
     private var pulseAnim: ValueAnimator? = null
@@ -566,6 +591,12 @@ private class NotchPillView(
         requestLayout()
     }
 
+    /** Pick the pill's collapsed animation: 0 classic, 1 beat bars, 2 ring, 3 liquid morph. */
+    fun setAnimStyle(style: Int) {
+        animStyle = style.coerceIn(0, 3)
+        invalidate()
+    }
+
     /** User-tuned pill scale; text sizes follow it, the camera hole does not. */
     var scaleF = 1f
         private set
@@ -609,6 +640,18 @@ private class NotchPillView(
         val w = width.toFloat()
         val h = height.toFloat()
         val r = (26f + 8f * expandT) * density
+        // Liquid-morph style: while the card opens or closes, the whole pill
+        // is revealed through a growing circle centred on the camera hole,
+        // so the island melts out of the lens instead of popping in.
+        val morph = animStyle == 3 && morphing
+        if (morph) {
+            val maxR = maxOf(w, expandedH.toFloat()) * 1.1f + 20f * density
+            val cr = camR + (maxR - camR) * expandT
+            canvas.save()
+            canvas.clipPath(android.graphics.Path().apply {
+                addCircle(w / 2f, h / 2f, cr, android.graphics.Path.Direction.CW)
+            })
+        }
         // Collapsed island: near-black like the system media pill, so it
         // reads as one solid capsule wrapping the camera. Expanded it keeps
         // the liquid-glass frosted card with a moving sheen and hairline rim.
@@ -663,6 +706,7 @@ private class NotchPillView(
             )
         }
         if (expanded) drawExpanded(canvas, w, h) else drawCollapsed(canvas, w, h)
+        if (morph) canvas.restore()
     }
 
     private fun drawCollapsed(canvas: Canvas, w: Float, h: Float) {
@@ -700,7 +744,22 @@ private class NotchPillView(
             canvas.restore()
         }
         drawPlayPause(canvas, w - pad - 15f * density, h / 2f)
-        if (durationMs > 0) {
+        if (animStyle == 2 && durationMs > 0) {
+            // Progress-ring mode: the song's progress wraps the camera cutout
+            // itself, HyperOS style; the bottom bar makes way for it.
+            val cx = w / 2f
+            val cy = h / 2f
+            val rr = camR + 2.6f * density
+            progRing.strokeCap = Paint.Cap.ROUND
+            progRing.strokeWidth = 2.2f * density
+            progRing.color = 0x2EFFFFFF
+            canvas.drawCircle(cx, cy, rr, progRing)
+            val frac = (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+            if (frac > 0.002f) {
+                progRing.color = 0xE6C6F53F.toInt()
+                canvas.drawArc(cx - rr, cy - rr, cx + rr, cy + rr, -90f, 360f * frac, false, progRing)
+            }
+        } else if (durationMs > 0) {
             track.color = 0x26FFFFFF
             val inset = 12f * density
             canvas.drawRoundRect(RectF(inset, h - 2.4f * density, w - inset, h - 0.8f * density), 1f, 1f, track)
@@ -752,7 +811,11 @@ private class NotchPillView(
         val gap = ((w - n * bw) / (n - 1)).coerceAtLeast(1.5f * density)
         val midY = h / 2f
         for (i in 0 until n) {
-            val t = if (playing) 0.32f + 0.68f * abs(sin(phase * 2.2f + i * 0.85f)) else 0.26f
+            val t = when {
+                !playing -> 0.26f
+                animStyle == 1 -> beatEnergy(i)
+                else -> 0.32f + 0.68f * abs(sin(phase * 2.2f + i * 0.85f))
+            }
             val bh2 = h * 0.34f * t + 2f * density
             wavePaint.alpha = if (playing) 0xFF else 0x8C
             canvas.drawRoundRect(
@@ -760,6 +823,20 @@ private class NotchPillView(
                 bw / 2f, bw / 2f, wavePaint,
             )
         }
+    }
+
+    /**
+     * Beat-bars mode: the bars ride a ~120 BPM pulse, each bar spiking on the
+     * beat and decaying until the next, with a per-bar pattern that keeps the
+     * dance organic. Runs on the tracked position, so it freezes with pause.
+     */
+    private fun beatEnergy(i: Int): Float {
+        val beatMs = 500L
+        val now = currentPosMs()
+        val inBeat = (now % beatMs).toFloat() / beatMs.toFloat()
+        val decay = Math.exp(-3.2 * inBeat).toFloat()
+        val seed = (((now / beatMs).toInt() * 31 + i * 17) % 100) / 100f
+        return (0.30f + 0.68f * decay * (0.55f + 0.45f * seed)).coerceIn(0.18f, 1f)
     }
 
     private fun drawArt(canvas: Canvas, cx: Float, cy: Float, r: Float) {
@@ -932,7 +1009,21 @@ private class NotchPillView(
         onShift(target)
         expandAnim?.cancel()
         expandAnim = ValueAnimator.ofFloat(expandT, if (target) 1f else 0f).apply {
-            duration = 260
+            if (animStyle == 3) {
+                // Liquid morph: a slower, decelerating melt through the
+                // circular reveal in onDraw instead of the hard swap.
+                duration = 420
+                interpolator = android.view.animation.DecelerateInterpolator(1.6f)
+                morphing = true
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(a: android.animation.Animator) {
+                        morphing = false
+                        invalidate()
+                    }
+                })
+            } else {
+                duration = 260
+            }
             addUpdateListener {
                 expandT = it.animatedValue as Float
                 requestLayout()

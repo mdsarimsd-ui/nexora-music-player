@@ -1352,6 +1352,7 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "appearance.notch_player"),
                                 )
                                 if (com.lastwave.app.ui.overlay.NotchPlayerPrefs.enabled(notchCtx)) {
+                                    NotchAnimControls(notchCtx)
                                     NotchLayoutControls(notchCtx)
                                 }
                             }
@@ -3528,5 +3529,59 @@ private fun NotchLayoutControls(ctx: android.content.Context) {
             "Long-press the notch pill and drag it anywhere, too.",
             style = MaterialTheme.typography.bodySmall,
         )
+    }
+}
+
+@Composable
+private fun NotchAnimControls(ctx: android.content.Context) {
+    val styleState = remember {
+        mutableStateOf(com.lastwave.app.ui.overlay.NotchPlayerPrefs.animStyle(ctx))
+    }
+    val names = listOf("Classic", "Beat bars", "Progress ring", "Liquid morph")
+    val hints = listOf(
+        "Five bars dance while music plays",
+        "Bars pulse to the beat",
+        "Progress wraps the camera",
+        "Tap melts the card open",
+    )
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+        Text("Pill animation", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(6.dp))
+        for (row in 0 until 2) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (col in 0 until 2) {
+                    val i = row * 2 + col
+                    val selected = styleState.value == i
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            styleState.value = i
+                            com.lastwave.app.ui.overlay.NotchPlayerPrefs.setAnimStyle(ctx, i)
+                            com.lastwave.app.ui.overlay.NotchPlayerService.applyLayout(ctx)
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor =
+                                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                else Color.Transparent,
+                            contentColor =
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                names[i],
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 12.sp,
+                            )
+                            Text(hints[i], fontSize = 9.sp, maxLines = 1, softWrap = false)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

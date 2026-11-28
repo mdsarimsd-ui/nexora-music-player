@@ -503,7 +503,7 @@ object SettingsSearchIndex {
                     title = "Nexora Signature Theme",
                     subtitle = "Bespoke logo palette with Electric Lime and Obsidian Teal",
                     keywords = listOf(
-                        "lastwave theme", "brand theme", "special theme", "logo theme", "lime",
+                        "signature theme", "brand theme", "special theme", "logo theme", "lime",
                         "teal", "obsidian", "electric lime", "iconic theme", "brand colors"
                     ),
                     icon = Icons.Filled.AutoAwesome,

@@ -62,6 +62,18 @@ object AdGate {
         if (capReached(activity)) return
         if (tooSoon(activity)) return
 
+        // The Ads SDK spins up a WebView engine; keep it OFF the launch path.
+        // Initialize only right before the first load of the day, then load
+        // in its completion callback.
+        MobileAds.initialize(activity) {
+            if (!enabled(activity)) return@initialize
+            loadInterstitial(activity)
+        }
+    }
+
+    private fun loadInterstitial(activity: Activity) {
+        if (capReached(activity)) return
+        if (tooSoon(activity)) return
         InterstitialAd.load(
             activity,
             INTERSTITIAL_UNIT,
@@ -69,7 +81,11 @@ object AdGate {
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdDismissedFullScreenContent() = Unit
+                        override fun onAdDismissedFullScreenContent() {
+                            // Nothing holds the dismissed ad, so its WebView
+                            // engine can be reclaimed and animations stay smooth.
+                            System.gc()
+                        }
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) = Unit
                     }
                     // Re-check the cap at show time in case the day rolled
@@ -115,10 +131,9 @@ object AdGate {
             .apply()
     }
 
-    /** Used by MainActivity: warm the SDK, then try one show once launch UI settles. */
-    fun warmAndMaybeShow(activity: Activity, delayMs: Long = 8_000L) {
+    /** Used by MainActivity: one show attempt once launch UI settles; no SDK work at launch. */
+    fun warmAndMaybeShow(activity: Activity, delayMs: Long = 12_000L) {
         if (!enabled(activity)) return
-        init(activity)
         Handler(Looper.getMainLooper()).postDelayed(
             { maybeShowInterstitial(activity) },
             delayMs,

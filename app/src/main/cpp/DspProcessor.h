@@ -237,6 +237,7 @@ private:
     Biquad presenceDetail_{};
     Biquad airDetail_{};
     Biquad monoBassFilter_{};
+    Biquad monoBassFold2_{};  // second stage: 4th-order Linkwitz-Riley style fold
     Biquad airExciterFilter_{};
     Crossfeed crossfeed_{};
     // AutoEQ / manual parametric EQ. Runs first in the chain and, unlike

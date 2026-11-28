@@ -383,6 +383,7 @@ private class NotchPillView(
     private val sheen = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val shape = android.graphics.Path()
     private val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val disc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val note = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xCCFFFFFF.toInt()
@@ -673,9 +674,23 @@ private class NotchPillView(
         canvas.drawRoundRect(rr, rad, rad, ring)
     }
 
+    private var iconBitmap: android.graphics.Bitmap? = null
+
     private fun drawAppIcon(canvas: Canvas, x: Float, y: Float, s: Float) {
         val rad = s * 0.32f
         val rr = RectF(x, y, x + s, y + s)
+        if (iconPaint.shader == null && iconBitmap == null) {
+            try {
+                val dw = applicationInfo.loadIcon(packageManager)
+                val bmp = android.graphics.Bitmap.createBitmap(s.toInt().coerceAtLeast(1), s.toInt().coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
+                val c = android.graphics.Canvas(bmp)
+                dw.setBounds(0, 0, bmp.width, bmp.height)
+                dw.draw(c)
+                iconBitmap = bmp
+                iconPaint.shader = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+            } catch (_: Exception) {
+            }
+        }
         if (iconPaint.shader != null) {
             val clip = android.graphics.Path()
             clip.addRoundRect(rr, rad, rad, android.graphics.Path.Direction.CW)

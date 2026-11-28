@@ -220,6 +220,10 @@ class NotchPlayerService : Service() {
 
     private fun addPill() {
         if (added || view == null) return
+        // Re-read the pill animation so a style picked in Settings (always
+        // while the pill is hidden inside the app) is live the moment the
+        // pill returns.
+        view?.setAnimStyle(NotchPlayerPrefs.animStyle(this))
         if (params == null) {
             params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -343,10 +347,10 @@ class NotchPlayerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_APPLY && added) {
+        if (intent?.action == ACTION_APPLY) {
             handler.post {
                 view?.setAnimStyle(NotchPlayerPrefs.animStyle(this))
-                layoutPill()
+                if (added) layoutPill()
             }
         }
         return START_NOT_STICKY

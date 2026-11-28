@@ -35,6 +35,7 @@ import android.view.animation.LinearInterpolator
 import com.lastwave.app.MainActivity
 import com.lastwave.app.widget.ActiveMediaSessionHolder
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -439,6 +440,15 @@ private class NotchPillView(
         style = Paint.Style.STROKE
         color = 0xE6C6F53F.toInt()
     }
+    private val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        color = Color.WHITE
+    }
+    private val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+    }
     private var pulseT = 0f
     private var pulseAnim: ValueAnimator? = null
     private var pressAnim: ValueAnimator? = null
@@ -753,15 +763,21 @@ private class NotchPillView(
             // itself, HyperOS style; the bottom bar makes way for it.
             val cx = w / 2f
             val cy = h / 2f
-            val rr = camR + 2.6f * density
+            val rr = camR + 3.4f * density
             progRing.strokeCap = Paint.Cap.ROUND
-            progRing.strokeWidth = 2.2f * density
-            progRing.color = 0x2EFFFFFF
+            progRing.strokeWidth = 3.4f * density
+            progRing.color = 0x40FFFFFF
             canvas.drawCircle(cx, cy, rr, progRing)
             val frac = (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             if (frac > 0.002f) {
-                progRing.color = 0xE6C6F53F.toInt()
+                progRing.color = 0xFFD9FF63.toInt()
                 canvas.drawArc(cx - rr, cy - rr, cx + rr, cy + rr, -90f, 360f * frac, false, progRing)
+                val ang = Math.toRadians(-90.0 + 360.0 * frac)
+                canvas.drawCircle(
+                    cx + rr * cos(ang).toFloat(),
+                    cy + rr * sin(ang).toFloat(),
+                    2.0f * density, progress,
+                )
             }
         } else if (durationMs > 0) {
             track.color = 0x26FFFFFF
@@ -770,6 +786,15 @@ private class NotchPillView(
             val frac = (currentPosMs().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             progress.color = 0xE6C6F53F.toInt()
             canvas.drawRoundRect(RectF(inset, h - 2.4f * density, inset + (w - 2 * inset) * frac, h - 0.8f * density), 1f, 1f, progress)
+        }
+        // The pulse layer: beat bars and ring mode bloom on the beat, liquid
+        // morph breathes slowly. Classic stays clean; its bars carry it.
+        if (playing) {
+            when (animStyle) {
+                1 -> drawBeatHalo(canvas, w / 2f, h / 2f, 26f * density, strong = true)
+                2 -> drawBeatHalo(canvas, w / 2f, h / 2f, 26f * density, strong = false)
+                3 -> drawBreathe(canvas, w / 2f, h / 2f, 26f * density)
+            }
         }
     }
 
@@ -811,16 +836,16 @@ private class NotchPillView(
     /** Five-bar waveform right of the camera; the bars dance while playing. */
     private fun drawWave(canvas: Canvas, x: Float, w: Float, h: Float) {
         val n = 5
-        val bw = 2.8f * density
+        val bw = 3.2f * density
         val gap = ((w - n * bw) / (n - 1)).coerceAtLeast(1.5f * density)
         val midY = h / 2f
         for (i in 0 until n) {
             val t = when {
                 !playing -> 0.26f
                 animStyle == 1 -> beatEnergy(i)
-                else -> 0.32f + 0.68f * abs(sin(phase * 2.2f + i * 0.85f))
+                else -> 0.22f + 0.78f * abs(sin(phase * 3.0f + i * 0.85f))
             }
-            val bh2 = h * 0.34f * t + 2f * density
+            val bh2 = h * 0.56f * t + 2f * density
             wavePaint.alpha = if (playing) 0xFF else 0x8C
             canvas.drawRoundRect(
                 RectF(x + i * (bw + gap), midY - bh2 / 2f, x + i * (bw + gap) + bw, midY + bh2 / 2f),
@@ -838,9 +863,42 @@ private class NotchPillView(
         val beatMs = 500L
         val now = currentPosMs()
         val inBeat = (now % beatMs).toFloat() / beatMs.toFloat()
-        val decay = Math.exp(-3.2 * inBeat).toFloat()
+        val decay = Math.exp(-1.7 * inBeat).toFloat()
         val seed = (((now / beatMs).toInt() * 31 + i * 17) % 100) / 100f
-        return (0.30f + 0.68f * decay * (0.55f + 0.45f * seed)).coerceIn(0.18f, 1f)
+        return (0.26f + 0.74f * decay * (0.55f + 0.45f * seed)).coerceIn(0.18f, 1f)
+    }
+
+    /**
+     * Beat halo: on every beat a bright ring blooms out of the camera hole
+     * toward the pill's edge while a soft light washes over the capsule, so
+     * the pulse is felt, not just seen. strong = beat bars, subtle = ring.
+     */
+    private fun drawBeatHalo(canvas: Canvas, cx: Float, cy: Float, corner: Float, strong: Boolean) {
+        val beatMs = 500L
+        val now = currentPosMs()
+        val inBeat = (now % beatMs).toFloat() / beatMs.toFloat()
+        val maxR = height / 2f - 1.5f * density
+        val spread = Math.exp(-(if (strong) 2.2 else 3.4) * inBeat).toFloat()
+        val r = camR + (maxR - camR) * (1f - spread)
+        haloPaint.strokeWidth = (if (strong) 2.8f else 2.0f) * density
+        haloPaint.alpha = ((if (strong) 0.62f else 0.34f) * spread * 255f).toInt().coerceIn(0, 255)
+        if (haloPaint.alpha > 4) canvas.drawCircle(cx, cy, r, haloPaint)
+        val flash = (if (strong) 0.15f else 0.07f) * Math.exp(-5.0 * inBeat).toFloat()
+        if (flash > 0.012f) {
+            flashPaint.alpha = (flash * 255f).toInt()
+            canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), corner, corner, flashPaint)
+        }
+    }
+
+    /** Liquid-morph idle: a slow breathing ring around the camera hole. */
+    private fun drawBreathe(canvas: Canvas, cx: Float, cy: Float, corner: Float) {
+        val k = 0.5f + 0.5f * sin(phase * 1.6f)
+        val maxR = height / 2f - 1.5f * density
+        haloPaint.strokeWidth = 2.4f * density
+        haloPaint.alpha = (0.34f * 255f).toInt()
+        canvas.drawCircle(cx, cy, camR + (maxR - camR) * 0.55f * k, haloPaint)
+        flashPaint.alpha = (0.05f * 255f).toInt()
+        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), corner, corner, flashPaint)
     }
 
     private fun drawArt(canvas: Canvas, cx: Float, cy: Float, r: Float) {
